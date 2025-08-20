@@ -46,22 +46,9 @@ const submissionSchema = new Schema({
         type: Number,
         default: 0,
     },
-    score: { //for contests
-        type: Number,
-        default: 0,
-    },
-    points: { //for problem solvers 
-        type: Number,
-        default: 0,
-    },
-    contestId: {
-        type: Schema.Types.ObjectId,
-        ref: "contest",
-    },
 
 }, { timestamps: true });
 
-submissionSchema.index({ userId: 1, problemId: 1 }); // creating the index.
 
 const Submission = mongoose.model("submission", submissionSchema);
 module.exports = Submission;

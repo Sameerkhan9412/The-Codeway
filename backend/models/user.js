@@ -8,13 +8,13 @@ const userScehma = Schema({
         minLength: 3,
         maxLength: 20,
     },
-    lastName: {
+    lastName: { 
         type: String,
         minLength: 3,
         maxLength: 20,
         required:false,
     },
-    emailId: {
+    emailId: { 
         type: String,
         required: true,
         unique: true,
@@ -22,7 +22,7 @@ const userScehma = Schema({
         trim: true,
         lowercase: true,
     },
-    password: {
+    password: { 
         type: String,
         required: true,
     },
@@ -45,6 +45,29 @@ const userScehma = Schema({
             },
         ]
     },
+    contestsCompleted: {
+        type: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "contest",
+                completedAt: { type: Date, default: Date.now }
+            }
+        ],
+        default: []
+    },
+    isPremium: {
+        type: Boolean,
+        default: false,
+    },
+    tokensLeft:
+    {
+        type: Number,
+        default: 10
+    },
+    premiumExpiry: { 
+        type: Date,
+        default: null
+    },
     profileImage: {
         type: String,
         default: null
@@ -59,7 +82,51 @@ const userScehma = Schema({
         twitter: { type: String, default: '' },
         website: { type: String, default: '' }
     },
-}, { timestamps: true });
+    points: {
+        type: Number,
+        default: 0
+    },
+    streak: {
+        type: Number,
+        default: 0
+    },
+    lastContestCompletion: {
+        type: Date,
+        default: null
+    },
+    contestHistory: {
+        type: [
+            {
+                contestId: {
+                    type: Schema.Types.ObjectId,
+                    ref: "contest"
+                },
+                rank: Number,
+                score: Number,
+                problemsSolved: Number,
+                totalRuntime: Number
+            }
+        ],
+        default: []
+    },
+    paymentHistory: [
+        {
+            orderId: { type: String },
+            paymentId: { type: String },
+            amount: { type: Number },
+            plan: { type: String },
+            date: { type: Date, default: Date.now },
+        },
+    ],
+}, { timestamps: true });//
 
-const User = mongoose.model("user", userScehma);
+userScehma.post("findOneAndDelete", async (userInfo) => {
+    if (userInfo)
+        await mongoose.model("submission").deleteMany({ userId: userInfo._id });
+})
+
+// No need for a compound index since we're using $addToSet in the controller
+// which already ensures uniqueness of problemIds within the problemSolved array
+
+const User = mongoose.model("user", userScehma);//
 module.exports = User;
