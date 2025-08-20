@@ -1,10 +1,15 @@
 const { OAuth2Client } = require('google-auth-library');
 const axios = require('axios');
-const redisWrapper =require('../config/redis')
+const redisWrapper = require("../config/redis");
 const validate = require("../utils/validator");
 const bcrypt = require('bcrypt');
 const User = require("../models/user");
+const Submission = require("../models/submission");
+const Contest = require("../models/contest");
+const Problem = require("../models/problem");
 const jwt = require("jsonwebtoken");
+const { generateProfileImage } = require('../utils/profileImageGenerator');
+
 const cloudinary = require('cloudinary').v2;
 const multer = require("multer");
 
@@ -257,6 +262,69 @@ const deleteProfile = async (req, res) => {
     }
 };
 
+const activeUsers = async (req, res) => {
+    try {
+        const userCount = await User.countDocuments({});
+        res.status(200).json({ message: "User count fetched successfully", count: userCount });
+    } catch (err) {
+        res.status(500).json({ message: "Error while fetching user Count", error: err.message });
+    }
+};
+
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find({}, '-password -confirmPassword -__v');
+        res.status(200).json({
+            message: "All users fetched successfully",
+            users
+        });
+    } catch (err) {
+        res.status(500).json({ message: "Error while fetching users", error: err.message });
+    }
+};
+
+const getPlatformStats = async (req, res) => {
+    try {
+        const totalUsers = await User.countDocuments();
+        const totalSubmissions = await Submission.countDocuments();
+        const totalContests = await Contest.countDocuments();
+        const totalProblems = await Problem.countDocuments();
+
+        res.status(200).json({
+            message: "Platform stats fetched successfully",
+            stats: {
+                totalUsers,
+                totalSubmissions,
+                totalContests,
+                totalProblems
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: "Error while fetching platform stats", error: err.message });
+    }
+};
+
+const updateAllProfileImages = async (req, res) => {
+    try {
+        const usersWithoutImage = await User.find({ profileImage: { $in: [null, ''] } });
+        let updatedCount = 0;
+
+        for (const user of usersWithoutImage) {
+            try {
+                const imageUrl = await generateProfileImage(user.firstName, user._id);
+                await User.findByIdAndUpdate(user._id, { profileImage: imageUrl });
+                updatedCount++;
+            } catch (error) {
+                console.error(`Failed to update profile image for user: ${user.emailId}`, error);
+            }
+        }
+
+        res.status(200).json({ message: `Updated profile images for ${updatedCount} users.` });
+    } catch (error) {
+        res.status(500).json({ message: 'An error occurred during the update process:', error: error.message });
+    }
+};
+
 const googleLogin = async (req, res) => {
     try {
         const { token } = req.body; // This is the access_token from the frontend
@@ -327,4 +395,16 @@ const googleLogin = async (req, res) => {
 };
 
 
-module.exports={register,login,logout,getProfile,updateProfile,deleteProfile,googleLogin}
+module.exports = {
+    register,
+    login,
+    logout,
+    getProfile,
+    updateProfile,
+    deleteProfile,
+    activeUsers,
+    googleLogin,
+    getAllUsers,
+    getPlatformStats,
+    updateAllProfileImages
+};

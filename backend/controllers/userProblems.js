@@ -287,6 +287,117 @@ const submittedProblem = async (req, res) => {
     }
 }
 
+// Add these new controller methods to your existing file
+
+/**
+ * Get problems solved by user with additional details for profile
+ */
+const getProfileProblemsSolved = async (req, res) => {
+    try {
+        const userId = req.result._id;
+
+        // Get all accepted submissions for the user
+        const submissions = await Submission.find({
+            userId,
+            status: 'Accepted'
+        }).select('problemId createdAt -_id'); // Select only necessary fields
+
+        // We no longer need to fetch problem details here as we're just counting submissions per day.
+        // The frontend will receive a list of submissions with dates.
+
+        // Map submissions to a simpler format for the heatmap
+        const activity = submissions.map(submission => ({
+            date: submission.createdAt, // Rename to 'date' to match frontend
+            count: 1 // Each submission counts as one activity
+        }));
+
+        // Aggregate counts per day, adjusting for a common +5:30 timezone offset
+        const aggregatedActivity = activity.reduce((acc, curr) => {
+            const date = new Date(curr.date);
+            // Manually adjust for a common timezone, e.g., UTC+5:30
+            // A more robust solution would use a library like moment-timezone
+            const offset = 5.5 * 60 * 60 * 1000;
+            const adjustedDate = new Date(date.getTime() + offset);
+            const dateStr = adjustedDate.toISOString().split('T')[0];
+            
+            if (!acc[dateStr]) {
+                acc[dateStr] = { date: dateStr, count: 0 };
+            }
+            acc[dateStr].count += 1;
+            return acc;
+        }, {});
+
+        res.status(200).json({
+            count: submissions.length,
+            // The key should be 'activity' to match frontend expectations
+            activity: Object.values(aggregatedActivity)
+        });
+    } catch (err) {
+        console.error("Error in getProfileProblemsSolved:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+/**
+ * Get all problems with additional stats for profile
+ */
+const getProfileAllProblems = async (req, res) => {
+    try {
+        const userId = req.result._id;
+
+        // Get all problems
+        const allProblems = await Problem.find({})
+            .select('_id title difficulty tags');
+
+        // Get problems solved by user
+        const solvedSubmissions = await Submission.find({
+            userId,
+            status: 'Accepted'
+        });
+        const solvedProblemIds = [...new Set(solvedSubmissions.map(s => s.problemId))];
+
+        // Get problems user is attempting but not solved
+        const attemptingSubmissions = await Submission.find({
+            userId,
+            status: { $ne: 'Accepted' }
+        });
+        const attemptingProblemIds = [...new Set(attemptingSubmissions.map(s => s.problemId))];
+
+        // Add solved and attempting status to each problem
+        const problemsWithStatus = allProblems.map(problem => {
+            const isSolved = solvedProblemIds.some(id => id.equals(problem._id));
+            const isAttempting = !isSolved && attemptingProblemIds.some(id => id.equals(problem._id));
+            return {
+                ...problem.toObject(),
+                isSolved,
+                isAttempting
+            };
+        });
+
+        // Calculate stats
+        const totalProblems = problemsWithStatus.length;
+        const solvedCount = problemsWithStatus.filter(p => p.isSolved).length;
+        const unsolvedCount = totalProblems - solvedCount;
+        const easy = problemsWithStatus.filter(p => p.difficulty === 'easy').length;
+        const medium = problemsWithStatus.filter(p => p.difficulty === 'medium').length;
+        const hard = problemsWithStatus.filter(p => p.difficulty === 'hard').length;
+        const attempting = problemsWithStatus.filter(p => p.isAttempting).length;
+
+        res.status(200).json({
+            totalProblems,
+            solvedCount,
+            unsolvedCount,
+            easy,
+            medium,
+            hard,
+            attempting,
+            problems: problemsWithStatus
+        });
+    } catch (err) {
+        console.error("Error in getProfileAllProblems:", err);
+        res.status(500).json({ error: err.message });
+    }
+};
 
 
-module.exports = { createProblem, updateProblem, deleteProblem, getAllProblems, getProblemById, problemsSolvedByUser, submittedProblem }
+module.exports = { createProblem, updateProblem, deleteProblem, getAllProblems, getProblemById, problemsSolvedByUser, submittedProblem, getProfileAllProblems, getProfileProblemsSolved }
