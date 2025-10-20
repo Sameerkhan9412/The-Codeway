@@ -27,3 +27,10 @@ app.get("/", (req, res) => {
     message: "server is running .......... 🟢 🏃‍♀️‍➡️🏃‍➡️"
   });
 });
+
+app.use("/api/user", authRouter);
+app.use("/api/problem", problemRouter);
+app.use("/api/submission", submissionRouter)
+app.use("/api/video", videoRouter)
+app.use("/api/contest", contestRouter)
+app.use('/api/playlists', playlistRouter);

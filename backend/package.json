@@ -17,6 +17,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.17.1",
     "nodemon": "^3.1.10",
-    "redis": "^5.8.0"
+    "redis": "^5.8.0",
+    "typeorm-uml": "^1.6.5"
   }
 }
