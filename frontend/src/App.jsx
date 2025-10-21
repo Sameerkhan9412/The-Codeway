@@ -9,6 +9,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import EmailVerification from "./components/common/EmailVerification";
 import Dashboard from "./pages/Dashboard";
+import { Route } from "lucide-react";
+import UserProfile from "./pages/UserProfile";
 
 function App() {
   const { isAuthenticated, loading, user } = useSelector((state) => state.auth);
@@ -42,25 +44,35 @@ function App() {
     );
   }
 
-  return <>
-    <div>
-       {isAuthenticated && user && !user.emailVerified && <EmailVerificationPopup user={user} />}
-       <Routes>
-         <Route path="/" element={<Homepage />} />
-            <Route path="/login" element={<Login/>} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgotpassword" element={<ForgotPassword />} />
-            <Route path="/reset-password/:token" element={<ResetPassword />} />
-            <Route path="/verify-email" element={<EmailVerification />} />{" "}
-            <Route
-              path="/dashboard"
-              element={
-                isAuthenticated ? <Dashboard /> : <Navigate to={"/login"} />
-              }
-            />
-       </Routes>
-    </div>
-  </>;
+  return (
+    <>
+      <div>
+        {isAuthenticated && user && !user.emailVerified && (
+          <EmailVerificationPopup user={user} />
+        )}
+        <Routes>
+          <Route path="/" element={<Homepage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/forgotpassword" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<EmailVerification />} />{" "}
+          <Route
+            path="/dashboard"
+            element={
+              isAuthenticated ? <Dashboard /> : <Navigate to={"/login"} />
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              isAuthenticated ? <UserProfile /> : <Navigate to={"/login"} />
+            }
+          />
+        </Routes>
+      </div>
+    </>
+  );
 }
 
 export default App;
