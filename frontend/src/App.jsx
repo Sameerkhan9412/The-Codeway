@@ -12,15 +12,28 @@ import CreateProblem from "./components/Admin/CreateProblem";
 import UpdateProblem from "./components/Admin/UpdateProblem";
 import DeleteProblem from "./components/Admin/DeleteProblem";
 import UserManagement from "./components/Admin/UserManagement";
+import PlatformAnalytics from "./components/Admin/PlatformAnalytics";
 import ManageVideo from "./components/Admin/ManageVideo";
 import UploadVideo from "./components/Admin/UploadVideo";
+import AdminContest from "./components/Admin/contest/AdminContest";
+import ContestPage from "../src/pages/ContestPage";
+import ContestDetail from "./components/Admin/contest/ContestDetail";
+import ContestDetails from "./components/contest/ContestDetails";
+import ContestProblemSolve from "./components/contest/ContestProblemSolve";
+import ContestLeaderboard from "./components/contest/ContestLeaderboard";
 import DashboardPage from "./components/Dashboards/DashboardPage";
-import PremiumDashboard from "./components/Dashboards/PremiumDashboard";
 import UserProfile from "./pages/UserProfile";
+import { ContestProvider } from "./context/ContestContext";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import EmailVerification from "./components/common/EmailVerification"; // Import
 import EmailVerificationPopup from "./components/common/EmailVerificationPopup";
+import { initializeSocket } from "./utils/socket";
+
+const ContestLeaderboardWrapper = () => {
+  const { contestId } = useParams();
+  return <ContestLeaderboard contestId={contestId} isContestActive={true} />;
+};
 
 const App = () => {
   const { isAuthenticated, loading, user } = useSelector((state) => state.auth);
@@ -62,14 +75,13 @@ const App = () => {
         <ContestProvider>
           <Routes>
             <Route path="/" element={<Homepage />} />
-            <Route path="/explore" element={<Explore />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgotpassword" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/verify-email" element={<EmailVerification />} />{" "}
             {/* New route for email verification */}
-           <Route
+            <Route
               path="/dashboard"
               element={
                 isAuthenticated ? <DashboardPage /> : <Navigate to={"/login"} />
@@ -139,10 +151,78 @@ const App = () => {
               }
             />
             <Route
+              path="/admin/analytics"
+              element={
+                isAuthenticated && user?.role === "admin" ? (
+                  <PlatformAnalytics />
+                ) : (
+                  <Navigate to={"/login"} />
+                )
+              }
+            />
+            <Route
               path="/admin/video"
               element={
                 isAuthenticated && user?.role === "admin" ? (
                   <ManageVideo />
+                ) : (
+                  <Navigate to={"/login"} />
+                )
+              }
+            />
+            <Route
+              path="/admin/contest"
+              element={
+                isAuthenticated && user?.role === "admin" ? (
+                  <AdminContest />
+                ) : (
+                  <Navigate to={"/login"} />
+                )
+              }
+            />
+            <Route
+              path="/contest"
+              element={
+                isAuthenticated ? <ContestPage /> : <Navigate to={"/login"} />
+              }
+            />
+            <Route
+              path="/contest/:contestId"
+              element={
+                isAuthenticated ? (
+                  <ContestDetails />
+                ) : (
+                  <Navigate to={"/login"} />
+                )
+              }
+            />
+            <Route
+              path="/admin/contest/:id"
+              element={
+                isAuthenticated && user?.role === "admin" ? (
+                  <ContestDetail />
+                ) : (
+                  <Navigate to={"/login"} />
+                )
+              }
+            />
+           
+
+            <Route
+              path="/contest/:contestId/problem/:problemId"
+              element={
+                isAuthenticated ? (
+                  <ContestProblemSolve />
+                ) : (
+                  <Navigate to={"/login"} />
+                )
+              }
+            />
+            <Route
+              path="/contest/:contestId/leaderboard"
+              element={
+                isAuthenticated ? (
+                  <ContestLeaderboardWrapper />
                 ) : (
                   <Navigate to={"/login"} />
                 )
@@ -156,18 +236,6 @@ const App = () => {
                 ) : (
                   <Navigate to={"/login"} />
                 )
-              }
-            />
-            <Route
-              path="/premium"
-              element={
-                isAuthenticated ? <Premium /> : <Navigate to={"/login"} />
-              }
-            />
-            <Route
-              path="/premium-dashboard"
-              element={
-                isAuthenticated ? <PremiumDashboard /> : <Navigate to={"/login"} />
               }
             />
             <Route

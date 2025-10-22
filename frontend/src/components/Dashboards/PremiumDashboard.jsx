@@ -49,7 +49,7 @@ const PremiumDashboard = () => {
                 <h2 className="text-2xl font-semibold text-white">API Access</h2>
               </div>
               <p className="text-slate-400 mb-4">
-                Use your personal API token to integrate Codexa with your applications.
+                Use your personal API token to integrate CodeWay with your applications.
               </p>
               <div className="mt-4 p-4 bg-slate-900 rounded-lg font-mono text-sm text-green-400 break-all border border-slate-700">
                 {profile?.apiToken || 'No API token found.'}

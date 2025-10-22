@@ -16,6 +16,7 @@ import SubmissionsTabs from "./SubmissionsTabs";
 import ProblemCard from "../common/ProblemCard";
 import Navbar from "../common/Navbar";
 import LoadingSpinner from "../common/LoadingSpinner";
+import { getSocket } from "../../utils/socket";
 import { useSelector, useDispatch } from "react-redux"; // Import useSelector and useDispatch
 import { getProfile } from "../../slice/authSlice"; // Import getProfile thunk
 
@@ -94,6 +95,8 @@ const DashboardPage = () => {
 
   useEffect(() => {
     if (!authUser) return; // Don't run if user is not authenticated
+
+    const socket = getSocket();
     if (socket) {
       const handleUserStatsUpdate = (data) => {
         console.log("Received userStatsUpdate event, refetching data:", data);

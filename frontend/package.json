@@ -15,6 +15,7 @@
     "lucide-react": "^0.546.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-oauth": "^0.0.1",
     "react-router": "^7.9.4",
     "react-router-dom": "^7.9.4",
     "react-toastify": "^11.0.5",

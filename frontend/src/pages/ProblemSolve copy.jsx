@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import Editor from "@monaco-editor/react";
 import { useParams, NavLink } from "react-router-dom";
-import codeway from "../utils/logo/codeway.png";
+import codeway from "../utils/logo/Codeway.png";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSolvedProblems } from "../slice/problemSlice";
 import { toast } from "react-toastify";
@@ -299,7 +299,7 @@ const ProblemPage = () => {
         <div className="flex items-center space-x-4">
           <NavLink to="/" className="hover:opacity-80 transition-opacity">
             <div className="flex items-center space-x-2">
-              <img src={codeway} alt="Codeway" className="h-8" />
+              <img src={codeway} alt="The Codeway" className="h-8" />
               <h1 className="text-xl font-bold text-white bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
                 The CodeWay
               </h1>

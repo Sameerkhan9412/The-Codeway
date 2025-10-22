@@ -23,7 +23,7 @@ const SubmissionsTabs = ({ submissions, loading }) => {
         </div>
         {[...Array(3)].map((_, i) => (
           <div
-            key={i}   
+            key={i}
             className="h-16 w-full bg-gray-700 rounded-lg mb-3"
           />
         ))}
