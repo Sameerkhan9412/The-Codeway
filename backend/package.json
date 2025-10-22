@@ -5,20 +5,31 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev":"nodemon index.js"
+    "dev": "nodemon index.js"
   },
   "author": "sameer khan",
   "license": "ISC",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
+    "canvas": "^3.2.0",
+    "cloudinary": "^2.8.0",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "google-auth-library": "^10.2.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.17.1",
+    "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.9",
     "nodemon": "^3.1.10",
+    "pdf-parse": "^2.4.5",
+    "razorpay": "^2.9.6",
     "redis": "^5.8.0",
-    "typeorm-uml": "^1.6.5"
+    "socket.io": "^4.8.1",
+    "typeorm-uml": "^1.6.5",
+    "validator": "^13.15.15"
   }
 }
