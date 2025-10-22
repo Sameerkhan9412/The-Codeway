@@ -69,6 +69,12 @@ function App() {
               isAuthenticated ? <UserProfile /> : <Navigate to={"/login"} />
             }
           />
+          <Route
+              path="/problems"
+              element={
+                isAuthenticated ? <Problem /> : <Navigate to={"/login"} />
+              }
+            />
         </Routes>
       </div>
     </>
