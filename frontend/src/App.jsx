@@ -69,7 +69,7 @@ const App = () => {
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/verify-email" element={<EmailVerification />} />{" "}
             {/* New route for email verification */}
-            <Route
+           <Route
               path="/dashboard"
               element={
                 isAuthenticated ? <DashboardPage /> : <Navigate to={"/login"} />
