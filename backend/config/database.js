@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const DBConnect = async () => {
   try {
-    await mongoose.connect(process.env.DB_URL);
+    await mongoose.connect(process.env.DB_STRING);
     console.log("✅ Database Connected Successfully");
   } catch (error) {
     console.error("❌ Database Connection Failed:", error.message);
