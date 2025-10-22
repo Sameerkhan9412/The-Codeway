@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import Navbar from '../components/common/Navbar'
-import codeway from  "../utils/logo/codeway.png"
+import codeway from  "../utils/logo/theCodeway.png"
 import {
   Code,
   Trophy,

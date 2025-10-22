@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import Editor from "@monaco-editor/react";
 import { useParams, NavLink } from "react-router-dom";
-import codeway from "../utils/logo/codeway.png";
+import codeway from "../utils/logo/theCodeway.png";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSolvedProblems } from "../slice/problemSlice";
 import { toast } from "react-toastify";
