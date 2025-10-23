@@ -29,7 +29,7 @@ async function sendOTPEmail(email, otp) {
     const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
-        subject: 'Your OTP for Codexa Verification',
+        subject: 'Your OTP for CodeWay Verification',
         text: `Your OTP code is: ${otp}. It is valid for 10 minutes.`,
         html: `<p>Your OTP code is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
     };

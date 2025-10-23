@@ -86,7 +86,7 @@ const Navbar = () => {
   };
 
   const navItems = [
-    { to: "/explore", label: "Explore", icon: Search },
+    // { to: "/explore", label: "Explore", icon: Search },
     { to: "/problems", label: "Problems", icon: Code2 },
     { to: "/contest", label: "Contest", icon: Trophy },
     { to: "/discuss", label: "Discuss", icon: MessageCircle },

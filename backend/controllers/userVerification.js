@@ -29,7 +29,7 @@ async function sendOTPEmail(email, otp) {
     const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
-        subject: 'Your OTP for Codexa Verification',
+        subject: 'Your OTP for CodeWay Verification',
         text: `Your OTP code is: ${otp}. It is valid for 10 minutes.`,
         html: `<p>Your OTP code is: <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
     };
@@ -216,7 +216,7 @@ const requestPasswordResetOTP = async (req, res) => {
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: email,
-            subject: 'Password Reset Request for Codexa',
+            subject: 'Password Reset Request for CodeWay',
             text: `You requested a password reset. Click this link to reset your password: ${resetLink}`,
             html: `<p>You requested a password reset. Click this link to reset your password: <a href="${resetLink}">${resetLink}</a></p>`
         };

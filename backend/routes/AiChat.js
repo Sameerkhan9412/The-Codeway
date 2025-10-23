@@ -33,7 +33,7 @@ aiRouter.get("/health", (req, res) => {
 aiRouter.get("/capabilities", (req, res) => {
   res.json({
     assistant: {
-      name: "CodeXa AI Assistant",
+      name: "CodeWay AI Assistant",
       version: "2.0",
       capabilities: [
         "Platform navigation",
@@ -54,7 +54,7 @@ aiRouter.get("/capabilities", (req, res) => {
       ]
     },
     doubt_solver: {
-      name: "CodeXa Doubt AI",
+      name: "CodeWay Doubt AI",
       version: "1.0",
       requirements: ["premium_subscription", "sufficient_tokens"],
       capabilities: [

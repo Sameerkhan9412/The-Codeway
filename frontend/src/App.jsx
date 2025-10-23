@@ -30,6 +30,9 @@ import EmailVerification from "./components/common/EmailVerification"; // Import
 import EmailVerificationPopup from "./components/common/EmailVerificationPopup";
 import { initializeSocket } from "./utils/socket";
 import DoubtAI from "./components/common/DoubtAi";
+import Explore from "./pages/Explore";
+import DiscussionDetail from "./pages/DiscussionDetail";
+import DiscussPage from "./pages/DiscussPage";
 
 const ContestLeaderboardWrapper = () => {
   const { contestId } = useParams();
@@ -72,10 +75,13 @@ const App = () => {
   return (
     <>
       <div>
-        {isAuthenticated && user && !user.emailVerified && <EmailVerificationPopup user={user} />}
+        {isAuthenticated && user && !user.emailVerified && (
+          <EmailVerificationPopup user={user} />
+        )}
         <ContestProvider>
           <Routes>
             <Route path="/" element={<Homepage />} />
+            <Route path="/explore" element={<Explore />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgotpassword" element={<ForgotPassword />} />
@@ -201,8 +207,6 @@ const App = () => {
                 )
               }
             />
-           
-
             <Route
               path="/contest/:contestId/problem/:problemId"
               element={
@@ -233,14 +237,26 @@ const App = () => {
                 )
               }
             />
-             <Route
-              path="/doubt-ai"
+            <Route
+              path="/discuss"
+              element={
+                isAuthenticated ? <DiscussPage /> : <Navigate to={"/login"} />
+              }
+            />
+            <Route
+              path="/discuss/:discussionId"
               element={
                 isAuthenticated ? (
-                  <DoubtAI />
+                  <DiscussionDetail />
                 ) : (
                   <Navigate to={"/login"} />
                 )
+              }
+            />
+            <Route
+              path="/doubt-ai"
+              element={
+                isAuthenticated ? <DoubtAI /> : <Navigate to={"/login"} />
               }
             />
             <Route
