@@ -25,7 +25,7 @@ import {
   ScanEye,
   LayoutDashboard
 } from "lucide-react";
-import codeway from "../../utils/logo/codeway-logo.png";
+import CodewayLogo from "../../utils/logo/codeway-logo.png";
 import { getSocket } from "../../utils/socket"; // Import socket utility
 
 const Navbar = () => {
@@ -136,14 +136,14 @@ const Navbar = () => {
                 <div className="relative">
                   <img
                     className="h-10 w-auto transition-transform duration-300 group-hover:scale-105"
-                    src={codeway}
-                    alt="codeway"
+                    src={CodewayLogo}
+                    alt="The Codeway"
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-amber-400/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
                 </div>
                 <div className="hidden lg:block">
                   <h1 className="text-lg font-bold mt-[-7px] bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-400 bg-clip-text text-transparent">
-                    The CodeWay
+                    CodeWay
                   </h1>
                 </div>
               </NavLink>

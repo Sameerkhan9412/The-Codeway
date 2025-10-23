@@ -29,6 +29,7 @@ import ResetPassword from "./pages/ResetPassword";
 import EmailVerification from "./components/common/EmailVerification"; // Import
 import EmailVerificationPopup from "./components/common/EmailVerificationPopup";
 import { initializeSocket } from "./utils/socket";
+import DoubtAI from "./components/common/DoubtAi";
 
 const ContestLeaderboardWrapper = () => {
   const { contestId } = useParams();
@@ -227,6 +228,16 @@ const App = () => {
               element={
                 isAuthenticated && user?.role === "admin" ? (
                   <UploadVideo />
+                ) : (
+                  <Navigate to={"/login"} />
+                )
+              }
+            />
+             <Route
+              path="/doubt-ai"
+              element={
+                isAuthenticated ? (
+                  <DoubtAI />
                 ) : (
                   <Navigate to={"/login"} />
                 )

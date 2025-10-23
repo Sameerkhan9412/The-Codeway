@@ -56,7 +56,8 @@ import axiosClient from "../utils/axiosClient";
 const Problem = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const solvedProblems = useSelector((state) => state.problems.solvedProblems);
+  const solvedProblems = useSelector((state) => state.problems);
+  console.log("solve rpoll..",solvedProblems)
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -70,7 +71,7 @@ const Problem = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
-    solved: 0,
+    solved:0,
     easy: 0,
     medium: 0,
     hard: 0,
@@ -78,7 +79,8 @@ const Problem = () => {
   const [playlists, setPlaylists] = useState([]);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
-  const [selectedProblemForPlaylist, setSelectedProblemForPlaylist] = useState(null);
+  const [selectedProblemForPlaylist, setSelectedProblemForPlaylist] =
+    useState(null);
   const [showAddToPlaylistModal, setShowAddToPlaylistModal] = useState(false);
   const [playlistLoading, setPlaylistLoading] = useState(false);
   const [addingToPlaylist, setAddingToPlaylist] = useState(false);
@@ -91,13 +93,13 @@ const Problem = () => {
   const uniqueTags = React.useMemo(() => {
     const tagSet = new Set();
     if (Array.isArray(problems)) {
-      problems.forEach(problem => {
-        const tags = Array.isArray(problem.tags) 
-          ? problem.tags 
-          : typeof problem.tags === "string" 
-          ? [problem.tags] 
+      problems.forEach((problem) => {
+        const tags = Array.isArray(problem.tags)
+          ? problem.tags
+          : typeof problem.tags === "string"
+          ? [problem.tags]
           : [];
-        tags.forEach(tag => tagSet.add(tag));
+        tags.forEach((tag) => tagSet.add(tag));
       });
     }
     return Array.from(tagSet).sort();
@@ -116,12 +118,16 @@ const Problem = () => {
         ]);
 
         const fetchedProblems = problemsRes.data || [];
-        setAllProblems(fetchedProblems);
+        console.log("fetched problem", fetchedProblems);
+        setAllProblems(fetchedProblems); // ➊ keep it flat
         setProblems(fetchedProblems.slice(0, 15));
         setHasMore(fetchedProblems.length > 15);
         setPage(1);
+        console.log("user", user);
+        console.log("user", initialLoad);
         if (user && initialLoad) {
           setPlaylists(playlistsRes.data?.data || playlistsRes.data || []);
+          console.log("playlist,",playlists)
           // Fetch solved problems only if they haven't been fetched yet
           if (solvedProblems.length === 0) {
             try {
@@ -158,7 +164,7 @@ const Problem = () => {
     const handleScroll = () => {
       if (
         window.innerHeight + document.documentElement.scrollTop >=
-          document.documentElement.offsetHeight - 200
+        document.documentElement.offsetHeight - 200
       ) {
         fetchMoreProblems();
       }
@@ -167,21 +173,22 @@ const Problem = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [hasMore, page, allProblems]);
-  
+
   // Add error display for solved problems fetch failure
-  const solvedProblemsError = useSelector(state => state.problems.error);
+  const solvedProblemsError = useSelector((state) => state.problems.error);
 
   // Update stats whenever problems or solvedProblems change
   useEffect(() => {
     if (problems.length > 0) {
       const newStats = {
         total: problems.length,
-        solved: user ? solvedProblems.length : 0,
+        solved: user?solvedProblems.length:0,
         easy: problems.filter((p) => p.difficulty === "easy").length,
         medium: problems.filter((p) => p.difficulty === "medium").length,
         hard: problems.filter((p) => p.difficulty === "hard").length,
       };
       setStats(newStats);
+      console.log("this is stats",stats)
     }
   }, [problems, solvedProblems, user]);
 
@@ -205,7 +212,10 @@ const Problem = () => {
     const searchMatch =
       filters.search === "" ||
       problem.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-      (problem.description && problem.description.toLowerCase().includes(filters.search.toLowerCase()));
+      (problem.description &&
+        problem.description
+          .toLowerCase()
+          .includes(filters.search.toLowerCase()));
 
     return difficultyMatch && tagMatch && statusMatch && searchMatch;
   });
@@ -255,7 +265,7 @@ const Problem = () => {
       return false;
     }
     // Check if the first element is a string (problem ID) or an object
-    if (typeof solvedProblems[0] === 'string') {
+    if (typeof solvedProblems[0] === "string") {
       return solvedProblems.includes(problemId);
     }
     // Original logic for array of objects
@@ -292,8 +302,8 @@ const Problem = () => {
           _id: data.data._id,
           name: data.data.name,
           user: data.data.user,
-          problems: data.data.problems || []
-        }
+          problems: data.data.problems || [],
+        },
       ]);
 
       setNewPlaylistName("");
@@ -310,19 +320,24 @@ const Problem = () => {
   const handleAddToPlaylist = async (playlistId) => {
     try {
       setAddingToPlaylist(true);
-      const { data } = await axiosClient.post(`/playlists/${playlistId}/problems`, {
-        problemId: selectedProblemForPlaylist,
-      });
+      const { data } = await axiosClient.post(
+        `/playlists/${playlistId}/problems`,
+        {
+          problemId: selectedProblemForPlaylist,
+        }
+      );
 
-      const problemToAdd = problems.find(p => p._id === selectedProblemForPlaylist);
-      
+      const problemToAdd = problems.find(
+        (p) => p._id === selectedProblemForPlaylist
+      );
+
       if (!problemToAdd) {
         throw new Error("Problem not found");
       }
 
-      setPlaylists(prevPlaylists => 
-        prevPlaylists.map(playlist => 
-          playlist._id === playlistId 
+      setPlaylists((prevPlaylists) =>
+        prevPlaylists.map((playlist) =>
+          playlist._id === playlistId
             ? {
                 ...playlist,
                 problems: [
@@ -332,9 +347,9 @@ const Problem = () => {
                     title: problemToAdd.title,
                     difficulty: problemToAdd.difficulty,
                     tags: problemToAdd.tags,
-                    acceptance: problemToAdd.acceptance
-                  }
-                ]
+                    acceptance: problemToAdd.acceptance,
+                  },
+                ],
               }
             : playlist
         )
@@ -379,7 +394,11 @@ const Problem = () => {
     setShowFilters(false);
   };
 
-  const hasActiveFilters = filters.difficulty !== "all" || filters.tag !== "all" || filters.status !== "all" || filters.search !== "";
+  const hasActiveFilters =
+    filters.difficulty !== "all" ||
+    filters.tag !== "all" ||
+    filters.status !== "all" ||
+    filters.search !== "";
 
   if (loading) {
     return (
@@ -512,10 +531,10 @@ const Problem = () => {
                       <span className="text-slate-400 font-medium">Solved</span>
                     </div>
                     <div className="text-3xl font-bold text-emerald-400 mb-1">
-                      {stats.solved}
+                      {stats?.solved}
                     </div>
                     <div className="text-xs text-emerald-400 font-medium">
-                      {stats.total > 0
+                      {stats.total> 0
                         ? Math.round((stats.solved / stats.total) * 100)
                         : 0}
                       % Complete
@@ -578,9 +597,8 @@ const Problem = () => {
                 </div>
               </div>
 
-
-               {/* Playlists Section */}
-               {user && playlists.length > 0 && (
+              {/* Playlists Section */}
+              {user && playlists.length > 0 && (
                 <div className="mb-8">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
@@ -617,18 +635,20 @@ const Problem = () => {
                             </span>
                             {playlist.problems?.length > 0 && (
                               <div className="flex gap-1 ml-2">
-                                {playlist.problems.slice(0, 3).map((problem, idx) => (
-                                  <span
-                                    key={idx}
-                                    className={`w-2 h-2 rounded-full ${
-                                      problem.difficulty === 'easy'
-                                        ? 'bg-emerald-400'
-                                        : problem.difficulty === 'medium'
-                                        ? 'bg-amber-400'
-                                        : 'bg-rose-400'
-                                    }`}
-                                  />
-                                ))}
+                                {playlist.problems
+                                  .slice(0, 3)
+                                  .map((problem, idx) => (
+                                    <span
+                                      key={idx}
+                                      className={`w-2 h-2 rounded-full ${
+                                        problem.difficulty === "easy"
+                                          ? "bg-emerald-400"
+                                          : problem.difficulty === "medium"
+                                          ? "bg-amber-400"
+                                          : "bg-rose-400"
+                                      }`}
+                                    />
+                                  ))}
                                 {playlist.problems.length > 3 && (
                                   <span className="text-xs text-slate-500">
                                     +{playlist.problems.length - 3}
@@ -656,12 +676,19 @@ const Problem = () => {
                       type="text"
                       placeholder="Search problems by title or description..."
                       value={filters.search}
-                      onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                      onChange={(e) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          search: e.target.value,
+                        }))
+                      }
                       className="w-full pl-12 pr-4 py-4 bg-slate-800/80 backdrop-blur-sm border border-slate-600/30 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300"
                     />
                     {filters.search && (
                       <button
-                        onClick={() => setFilters(prev => ({ ...prev, search: "" }))}
+                        onClick={() =>
+                          setFilters((prev) => ({ ...prev, search: "" }))
+                        }
                         className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-white transition-colors"
                       >
                         <X className="h-5 w-5" />
@@ -684,10 +711,21 @@ const Problem = () => {
                       Filters
                       {hasActiveFilters && (
                         <span className="ml-1 px-2 py-0.5 bg-orange-500 text-white text-xs rounded-full">
-                          {[filters.difficulty !== "all", filters.tag !== "all", filters.status !== "all", filters.search !== ""].filter(Boolean).length}
+                          {
+                            [
+                              filters.difficulty !== "all",
+                              filters.tag !== "all",
+                              filters.status !== "all",
+                              filters.search !== "",
+                            ].filter(Boolean).length
+                          }
                         </span>
                       )}
-                      <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showFilters ? "rotate-180" : ""}`} />
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform duration-300 ${
+                          showFilters ? "rotate-180" : ""
+                        }`}
+                      />
                     </button>
 
                     {/* Sort Dropdown */}
@@ -724,18 +762,33 @@ const Problem = () => {
                                 name="difficulty"
                                 value={diff}
                                 checked={filters.difficulty === diff}
-                                onChange={(e) => setFilters(prev => ({ ...prev, difficulty: e.target.value }))}
+                                onChange={(e) =>
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    difficulty: e.target.value,
+                                  }))
+                                }
                                 className="sr-only"
                               />
-                              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-300 ${
-                                filters.difficulty === diff
-                                  ? "bg-orange-500/20 border border-orange-500/30 text-orange-400"
-                                  : "bg-slate-700/30 border border-slate-600/30 text-slate-300 hover:bg-slate-600/30"
-                              }`}>
-                                {diff === "all" && <Funnel className="w-4 h-4" />}
-                                {diff === "easy" && <Target className="w-4 h-4 text-emerald-400" />}
-                                {diff === "medium" && <Zap className="w-4 h-4 text-amber-400" />}
-                                {diff === "hard" && <Brain className="w-4 h-4 text-rose-400" />}
+                              <div
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-300 ${
+                                  filters.difficulty === diff
+                                    ? "bg-orange-500/20 border border-orange-500/30 text-orange-400"
+                                    : "bg-slate-700/30 border border-slate-600/30 text-slate-300 hover:bg-slate-600/30"
+                                }`}
+                              >
+                                {diff === "all" && (
+                                  <Funnel className="w-4 h-4" />
+                                )}
+                                {diff === "easy" && (
+                                  <Target className="w-4 h-4 text-emerald-400" />
+                                )}
+                                {diff === "medium" && (
+                                  <Zap className="w-4 h-4 text-amber-400" />
+                                )}
+                                {diff === "hard" && (
+                                  <Brain className="w-4 h-4 text-rose-400" />
+                                )}
                                 <span className="capitalize font-medium">
                                   {diff === "all" ? "All Difficulties" : diff}
                                 </span>
@@ -753,7 +806,12 @@ const Problem = () => {
                         </label>
                         <select
                           value={filters.tag}
-                          onChange={(e) => setFilters(prev => ({ ...prev, tag: e.target.value }))}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              tag: e.target.value,
+                            }))
+                          }
                           className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/30 rounded-xl text-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300"
                         >
                           <option value="all">All Topics</option>
@@ -774,26 +832,54 @@ const Problem = () => {
                           </label>
                           <div className="space-y-2">
                             {[
-                              { value: "all", label: "All Problems", icon: <Funnel className="w-4 h-4" /> },
-                              { value: "solved", label: "Solved", icon: <CheckCircle className="w-4 h-4 text-emerald-400" /> },
-                              { value: "unsolved", label: "Unsolved", icon: <Circle className="w-4 h-4 text-slate-400" /> }
+                              {
+                                value: "all",
+                                label: "All Problems",
+                                icon: <Funnel className="w-4 h-4" />,
+                              },
+                              {
+                                value: "solved",
+                                label: "Solved",
+                                icon: (
+                                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                ),
+                              },
+                              {
+                                value: "unsolved",
+                                label: "Unsolved",
+                                icon: (
+                                  <Circle className="w-4 h-4 text-slate-400" />
+                                ),
+                              },
                             ].map((status) => (
-                              <label key={status.value} className="flex items-center">
+                              <label
+                                key={status.value}
+                                className="flex items-center"
+                              >
                                 <input
                                   type="radio"
                                   name="status"
                                   value={status.value}
                                   checked={filters.status === status.value}
-                                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                                  onChange={(e) =>
+                                    setFilters((prev) => ({
+                                      ...prev,
+                                      status: e.target.value,
+                                    }))
+                                  }
                                   className="sr-only"
                                 />
-                                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-300 ${
-                                  filters.status === status.value
-                                    ? "bg-orange-500/20 border border-orange-500/30 text-orange-400"
-                                    : "bg-slate-700/30 border border-slate-600/30 text-slate-300 hover:bg-slate-600/30"
-                                }`}>
+                                <div
+                                  className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-300 ${
+                                    filters.status === status.value
+                                      ? "bg-orange-500/20 border border-orange-500/30 text-orange-400"
+                                      : "bg-slate-700/30 border border-slate-600/30 text-slate-300 hover:bg-slate-600/30"
+                                  }`}
+                                >
                                   {status.icon}
-                                  <span className="font-medium">{status.label}</span>
+                                  <span className="font-medium">
+                                    {status.label}
+                                  </span>
                                 </div>
                               </label>
                             ))}
@@ -806,7 +892,8 @@ const Problem = () => {
                     {hasActiveFilters && (
                       <div className="flex justify-between items-center mt-6 pt-6 border-t border-slate-600/30">
                         <div className="text-sm text-slate-400">
-                          {sortedProblems.length} of {problems.length} problems match your filters
+                          {sortedProblems.length} of {problems.length} problems
+                          match your filters
                         </div>
                         <button
                           onClick={clearAllFilters}
@@ -820,8 +907,6 @@ const Problem = () => {
                   </div>
                 )}
               </div>
-
-             
             </div>
           </div>
         </div>
@@ -1125,7 +1210,9 @@ const Problem = () => {
           {hasMore && (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-orange-500"></div>
-              <span className="ml-4 text-slate-300">Loading more problems...</span>
+              <span className="ml-4 text-slate-300">
+                Loading more problems...
+              </span>
             </div>
           )}
 
@@ -1257,7 +1344,8 @@ const Problem = () => {
                     <ListPlus className="w-6 h-6 text-purple-400" />
                   </div>
                   <h3 className="text-2xl font-bold text-white">
-                    Add to Playlist</h3>
+                    Add to Playlist
+                  </h3>
                 </div>
                 <button
                   onClick={() => setShowAddToPlaylistModal(false)}
@@ -1266,7 +1354,7 @@ const Problem = () => {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              
+
               {playlists.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="p-4 rounded-xl bg-slate-700/30 border border-slate-600/30 w-fit mx-auto mb-4">
@@ -1370,7 +1458,7 @@ const Problem = () => {
       />
 
       {/* Custom Styles */}
-      <style jsx>{`
+      <style jsx="true">{`
         @keyframes fadeInUp {
           from {
             opacity: 0;
@@ -1455,7 +1543,8 @@ const Problem = () => {
 
         /* Transform and transition support */
         .transform {
-          transform: translateX(0) translateY(0) rotate(0) skewX(0) skewY(0) scaleX(1) scaleY(1);
+          transform: translateX(0) translateY(0) rotate(0) skewX(0) skewY(0)
+            scaleX(1) scaleY(1);
         }
 
         .transition-all {
