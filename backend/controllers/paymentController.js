@@ -34,7 +34,7 @@ const createOrder = async (req, res) => {
 
 
     const order = await razorpay.orders.create(options);
-    console.log("Order created successfully:", order);
+    // console.log("Order created successfully:", order);
 
     res.status(200).json({
       success: true,
@@ -109,7 +109,7 @@ const verifyOrder = async (req, res) => {
 
     if (plan === "buy_tokens") {
       const tokens = 100;
-      console.log(`Adding ${tokens} tokens for user ${userId}`);
+      // console.log(`Adding ${tokens} tokens for user ${userId}`);
       user.tokensLeft = (user.tokensLeft || 0) + tokens;
       user.paymentHistory.push({
         orderId: razorpay_order_id,

@@ -10,13 +10,10 @@ const submitCode = async (req, res) => {
     try {
 
         const userId = req.result._id;
-        console.log("submitCode: userId:", userId);
 
         const problemId = req.params.id;
-        console.log("submitCode: problemId:", problemId);
 
         let { code, language } = req.body;
-        console.log("submitCode: received code and language");
 
         if (!userId || !problemId || !code || !language) {
             console.log("submitCode: Missing fields");
@@ -48,13 +45,13 @@ const submitCode = async (req, res) => {
         //now judge0 code submit 
         const languageId = await getLanguageById(language);
         if (!languageId) {
-            console.log("submitCode: Invalid language id");
+            // console.log("submitCode: Invalid language id");
             return res.status(404).send(" Invalid Language Id");
         }
         console.log("submitCode: Language ID found:", languageId);
 
         if (!problem.hiddenTestCases || problem.hiddenTestCases.length === 0) {
-            console.log("submitCode: Problem has no hidden test cases.");
+            // console.log("submitCode: Problem has no hidden test cases.");
             return res.status(400).json({
                 success: false,
                 message: "This problem has no hidden test cases and cannot be submitted."
@@ -119,12 +116,12 @@ const submitCode = async (req, res) => {
         submittedResult.errorMessage = errorMessage;
 
         await submittedResult.save();
-        console.log("submitCode: Submission updated with results");
+        // console.log("submitCode: Submission updated with results");
 
-        // after submission saving it to the problem Id - only if status is Accepted
-        console.log("submitCode: Checking if problem is already solved. Status:", status);
-        console.log("submitCode: User's problemSolved array:", req.result.problemSolved);
-        console.log("submitCode: Problem ID to check:", problemId);
+        // // after submission saving it to the problem Id - only if status is Accepted
+        // console.log("submitCode: Checking if problem is already solved. Status:", status);
+        // console.log("submitCode: User's problemSolved array:", req.result.problemSolved);
+        // console.log("submitCode: Problem ID to check:", problemId);
 
         if (status === 'Accepted') {
             try {

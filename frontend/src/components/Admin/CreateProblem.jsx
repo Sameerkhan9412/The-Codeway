@@ -201,7 +201,7 @@ function CreateProblem() {
 
   const watchedValues = watch();
 
-  const onSubmit = async (data) => {
+ const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
       await axiosClient.post("/problem/create", data);

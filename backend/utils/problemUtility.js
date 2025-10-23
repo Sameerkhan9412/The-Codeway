@@ -111,5 +111,4 @@ const submitToken = async (resultToken) => {
     await waiting(1000);
   }
 }
-
 module.exports = { getLanguageById, SubmitBatch, submitToken }

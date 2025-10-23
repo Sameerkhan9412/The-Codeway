@@ -472,7 +472,7 @@ const saveRecording = async (req, res) => {
 // Updated createSession function to handle both old and new data structures
 const createSession = async (req, res) => {
   try {
-    console.log('Request body:', req.body); // Add logging for debugging
+    // console.log('Request body:', req.body); // Add logging for debugging
 
     // Handle both camelCase and snake_case properties
     const resumeText = req.body.resumeText || req.body.resume_text;

@@ -88,12 +88,6 @@ const App = () => {
               }
             />
             <Route
-              path="/interview"
-              element={
-                isAuthenticated ? <Interview /> : <Navigate to={"/login"} />
-              }
-            />
-            <Route
               path="/problems"
               element={
                 isAuthenticated ? <Problem /> : <Navigate to={"/login"} />
