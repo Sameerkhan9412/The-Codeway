@@ -86,7 +86,7 @@ const Signup = () => {
               <h1 className="text-3xl font-bold text-white mb-2">
                 Create Account
               </h1>
-              <p className="text-gray-400">Join The CodeWay for Coding Challenges</p>
+              <p className="text-gray-400">Join CodeWay for Coding Challenges</p>
             </div>
 
   

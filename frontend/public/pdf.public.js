@@ -1,0 +1,1 @@
+importScripts('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.5.141/pdf.worker.min.js');

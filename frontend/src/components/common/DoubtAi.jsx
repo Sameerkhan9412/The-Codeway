@@ -17,7 +17,7 @@ import {
 import { NavLink } from "react-router-dom";
 import { initializeSocket } from "../../utils/socket";
 import axiosClient from "../../utils/axiosClient";
-function DobutAi({ problem }) {
+function DoubtAI({ problem }) {
   const dispatch = useDispatch();
   const { user, profileLoading, token } = useSelector((state) => state.auth);
   const [messages, setMessages] = useState([
@@ -509,14 +509,14 @@ function DobutAi({ problem }) {
     }
   };
 
-  // if (profileLoading) {
-  //   return (
-  //     <div className="flex flex-col h-full bg-gray-900 text-gray-100 items-center justify-center">
-  //       <Loader className="animate-spin" size={48} />
-  //       <p className="text-lg mt-4">Loading AI Assistant...</p>
-  //     </div>
-  //   );
-  // }
+  if (profileLoading) {
+    return (
+      <div className="flex flex-col h-full bg-gray-900 text-gray-100 items-center justify-center">
+        <Loader className="animate-spin" size={48} />
+        <p className="text-lg mt-4">Loading AI Assistant...</p>
+      </div>
+    );
+  }
 
   if (!user?.isPremium) {
     return (
@@ -757,4 +757,4 @@ function DobutAi({ problem }) {
   );
 }
 
-export default DobutAi;
+export default DoubtAI;
