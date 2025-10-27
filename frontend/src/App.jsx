@@ -33,6 +33,7 @@ import DoubtAI from "./components/common/DoubtAi";
 import Explore from "./pages/Explore";
 import DiscussionDetail from "./pages/DiscussionDetail";
 import DiscussPage from "./pages/DiscussPage";
+import { DSAVisualizer } from "./pages/DSAVisualizer";
 
 const ContestLeaderboardWrapper = () => {
   const { contestId } = useParams();
@@ -172,6 +173,16 @@ const App = () => {
               }
             />
             <Route
+              path="/admin/video"
+              element={
+                isAuthenticated && user?.role === "admin" ? (
+                  <ManageVideo />
+                ) : (
+                  <Navigate to={"/login"} />
+                )
+              }
+            />
+            <Route
               path="/admin/contest"
               element={
                 isAuthenticated && user?.role === "admin" ? (
@@ -264,6 +275,17 @@ const App = () => {
               element={
                 isAuthenticated ? <UserProfile /> : <Navigate to={"/login"} />
               }
+            />
+            <Route
+              path="/visualizer"
+              element={
+                isAuthenticated ? (
+                  <DSAVisualizer />
+                ) : (
+                  <Navigate to={"/login"} />
+                )
+              }
+              
             />
           </Routes>
         </ContestProvider>
