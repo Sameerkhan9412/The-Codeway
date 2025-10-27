@@ -33,6 +33,7 @@ import DoubtAI from "./components/common/DoubtAi";
 import Explore from "./pages/Explore";
 import DiscussionDetail from "./pages/DiscussionDetail";
 import DiscussPage from "./pages/DiscussPage";
+import Interview from "./pages/Interview";
 
 const ContestLeaderboardWrapper = () => {
   const { contestId } = useParams();
@@ -235,6 +236,12 @@ const App = () => {
                 ) : (
                   <Navigate to={"/login"} />
                 )
+              }
+            />
+            <Route
+              path="/interview"
+              element={
+                isAuthenticated ? <Interview /> : <Navigate to={"/login"} />
               }
             />
             <Route

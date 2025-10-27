@@ -1,49 +1,46 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fs = require('fs');
 const path = require('path');
-const pdf = require('pdf-parse');
+const pdfParse = require('pdf-parse'); // ✅ default import
+// const pdfjsLib = require('pdfjs-dist/legacy/build/pdf');
+const pdf=require("pdf-parse");
+const { PDFParse } = require('pdf-parse');
+
 
 // Initialize Google AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // In-memory storage for interview sessions
-// In production, you should use a database like Redis
 const interviewSessions = new Map();
+if (!global.interviewFeedback) global.interviewFeedback = new Map();
 
 // Cleanup expired sessions every 5 minutes
-setInterval(() => {
-  cleanupExpiredSessions();
-}, 5 * 60 * 1000);
+setInterval(() => cleanupExpiredSessions(), 5 * 60 * 1000);
+
 
 const extractKeySkills = (resume) => {
   const skillKeywords = [
-    'javascript', 'react', 'node.js', 'python', 'java', 'sql', 'mongodb',
-    'aws', 'docker', 'kubernetes', 'git', 'agile', 'scrum', 'api', 'rest',
-    'graphql', 'typescript', 'express', 'angular', 'vue', 'spring', 'django',
-    'html', 'css', 'bootstrap', 'tailwind', 'redux', 'next.js', 'nest.js',
-    'mysql', 'postgresql', 'redis', 'elasticsearch', 'firebase', 'azure',
-    'gcp', 'jenkins', 'github', 'gitlab', 'jira', 'confluence'
+    'javascript','react','node.js','python','java','sql','mongodb','aws','docker',
+    'kubernetes','git','agile','scrum','api','rest','graphql','typescript','express',
+    'angular','vue','spring','django','html','css','bootstrap','tailwind','redux',
+    'next.js','nest.js','mysql','postgresql','redis','elasticsearch','firebase','azure',
+    'gcp','jenkins','github','gitlab','jira','confluence'
   ];
-
   const foundSkills = skillKeywords.filter(skill =>
     resume.toLowerCase().includes(skill.toLowerCase())
   );
-
-  return foundSkills.slice(0, 5); // Return top 5 skills
+  return foundSkills.slice(0, 5); // Top 5 skills
 };
 
-// Helper function to generate context-aware questions
+// Helper to generate context-aware question prompt
 const generateQuestionPrompt = (session, questionNumber) => {
   const { conversation, keySkills, resumeSnippet } = session;
-
-  // Get last 2 exchanges to maintain context while saving tokens
   const recentContext = conversation.slice(-4);
   const contextText = recentContext.map(msg => `${msg.role}: ${msg.content}`).join('\n');
-
   const difficulty = questionNumber <= 2 ? 'basic' : questionNumber <= 4 ? 'intermediate' : 'advanced';
   const focusSkill = keySkills[Math.min(questionNumber - 1, keySkills.length - 1)] || 'problem-solving';
 
-  const basePrompt = `You are an expert technical interviewer conducting a job interview.
+  return `You are an expert technical interviewer conducting a job interview.
 
 RESUME INFORMATION:
 ${resumeSnippet || 'Not available'}
@@ -51,50 +48,31 @@ ${resumeSnippet || 'Not available'}
 CANDIDATE SKILLS: ${keySkills.join(', ')}
 
 PREVIOUS CONVERSATION:
-${contextText ? contextText : 'No previous conversation'}
+${contextText || 'No previous conversation'}
 
 CURRENT PROGRESS: Question ${questionNumber}/5 (Difficulty: ${difficulty})
 
 INSTRUCTIONS:
-1. Analyze the candidate's previous responses carefully
-2. Ask a follow-up ${difficulty} question that builds on their previous answers
-3. Focus on the skill: ${focusSkill}
-4. Make the question challenging but appropriate for an interview
-
-Your question must:
-- Be directly related to their resume or previous answers
-- Be specific and technical (not generic)
-- Be 15-20 words maximum
-- Contain no greetings or explanations
-- Test both knowledge and practical application
-- Progressively increase in difficulty
+1. Analyze previous answers carefully
+2. Ask a follow-up ${difficulty} question
+3. Focus on skill: ${focusSkill}
+4. Make question challenging but appropriate
 
 Ask the next technical question now.`;
-
-  return basePrompt;
 };
 
-// Helper function to generate feedback prompt
+// Helper to generate feedback prompt
 const generateFeedbackPrompt = (session) => {
   const { keySkills, conversation, resumeSnippet, candidateInfo } = session;
+  const fullConversation = conversation.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n');
+  const userResponses = conversation.filter(msg => msg.role === 'user').map((msg, i) => `Q${i + 1}: ${msg.content}`).join('\n');
 
-  // Extract full conversation for context
-  const fullConversation = conversation
-    .map(msg => `${msg.role.toUpperCase()}: ${msg.content}`)
-    .join('\n');
-
-  // Extract only user responses for evaluation
-  const userResponses = conversation
-    .filter(msg => msg.role === 'user')
-    .map((msg, index) => `Q${index + 1}: ${msg.content}`)
-    .join('\n');
-
-  return `You are an expert hiring manager and technical interviewer evaluating a candidate's interview performance.
+  return `You are an expert hiring manager evaluating a candidate's interview.
 
 RESUME INFORMATION:
 ${resumeSnippet || 'Not available'}
 
-CANDIDATE INFORMATION:
+CANDIDATE INFO:
 Name: ${candidateInfo?.name || 'Anonymous'}
 Key Skills: ${keySkills.join(', ')}
 
@@ -104,13 +82,7 @@ ${fullConversation}
 CANDIDATE RESPONSES ONLY:
 ${userResponses}
 
-EVALUATION INSTRUCTIONS:
-1. Carefully analyze the candidate's responses against their resume and the questions asked
-2. Evaluate technical knowledge, communication skills, problem-solving ability, and overall fit
-3. Provide an ATS (Applicant Tracking System) score that reflects how well their responses match job requirements
-4. Be thorough, specific, and actionable in your feedback
-
-Provide detailed feedback in JSON format only:
+Provide detailed feedback in JSON format:
 {
   "overallScore": 0-100,
   "technicalScore": 0-100,
@@ -119,129 +91,49 @@ Provide detailed feedback in JSON format only:
   "strengths": ["strength1", "strength2", "strength3"],
   "weaknesses": ["area1", "area2", "area3"],
   "improvements": ["tip1", "tip2", "tip3", "tip4"],
-  "skillsAssessment": {
-    "skill1": 0-100,
-    "skill2": 0-100,
-    "skill3": 0-100
-  },
+  "skillsAssessment": {"skill1": 0-100,"skill2":0-100,"skill3":0-100},
   "hiringRecommendation": "Strong hire/Consider hiring/Not recommended",
   "detailedAnalysis": "Comprehensive analysis in 100-150 words",
-  "careerAdvice": "Specific career development advice in 50-75 words"
+  "careerAdvice": "Specific career advice in 50-75 words"
 }`;
 };
 
-// Update uploadResume function
+// Extract text from PDF buffer
+async function extractTextFromPDFBuffer(buffer) {
+  try {
+    const data = await pdfParse(buffer); // call pdfParse as a function
+    return data?.text || "No text found in PDF";
+  } catch (e) {
+    console.error('PDF extraction failed:', e);
+    return "PDF extraction failed";
+  }
+}
+
+
+// Upload resume endpoint
 const uploadResume = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'No resume file uploaded'
-      });
-    }
-
-    // File validation
-    const allowedTypes = ['.pdf', '.doc', '.docx', '.txt'];
-    const fileExtension = path.extname(req.file.originalname).toLowerCase();
-
-    if (!allowedTypes.includes(fileExtension)) {
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid file type. Only PDF, DOC, DOCX, and TXT files are allowed'
-      });
-    }
-
-    // File size validation
-    const maxSize = 10 * 1024 * 1024;
-    if (req.file.size > maxSize) {
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      return res.status(400).json({
-        success: false,
-        message: 'File size too large. Maximum 10MB allowed'
-      });
-    }
-
-    let extractedText = '';
-    const filePath = req.file.path;
-
-    try {
-      if (fileExtension === '.txt') {
-        extractedText = fs.readFileSync(filePath, 'utf8');
-      } else if (fileExtension === '.pdf') {
-        try {
-          // Use pdf-parse to extract text
-          const dataBuffer = fs.readFileSync(filePath);
-          const data = await pdf(dataBuffer);
-          extractedText = data.text;
-
-          // If parsing fails, try fallback text extraction
-          if (!extractedText || extractedText.trim().length < 10) {
-            console.warn('PDF parsing returned insufficient text, using fallback');
-            // Simple text extraction as fallback
-            const fallbackText = await extractTextFromPDFBuffer(dataBuffer);
-            if (fallbackText && fallbackText.length > extractedText.length) {
-              extractedText = fallbackText;
-            }
-          }
-        } catch (parseError) {
-          console.error('PDF parsing error:', parseError);
-          // Simple fallback extraction
-          extractedText = await extractTextFromPDFBuffer(fs.readFileSync(filePath));
-        }
-      }
-      else {
-        // For DOC/DOCX, we'll still use placeholder
-        extractedText = "DOC/DOCX text extraction not implemented yet. Please use a text file or implement mammoth library.";
-      }
-    } catch (parseError) {
-      console.error('Text extraction error:', parseError);
-      extractedText = "Failed to extract text from file";
-    }
-
-    // Clean up uploaded file
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-
-    // Validate extracted text
-    if (extractedText.trim().length < 50) {
-      return res.status(400).json({
-        success: false,
-        message: 'Resume content too short. Please provide a more detailed resume.'
-      });
-    }
-
-    // Return extracted data
-    const resumeData = {
-      text: extractedText,
-      fileName: req.file.originalname,
-      fileSize: req.file.size,
-      candidateName: req.body.candidateName || 'Anonymous',
-      candidateEmail: req.body.candidateEmail || ''
-    };
-
+    if (!req.file) return res.status(400).json({ success: false, message: 'No resume uploaded' });
+    const parser = new PDFParse({ url: req.file.path });
+    console.log("parse data",parser)
+    const result = await parser.getText();
+    console.log("file result",result.pages[0].text.toString())
+    let extractedText = result.pages[0].text.toString();
+    if (extractedText.trim().length < 50) return res.status(400).json({ success: false, message: 'Resume too short' });
     res.json({
       success: true,
-      data: resumeData
+      data: {
+        text: extractedText,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        candidateName: req.body.candidateName || 'Anonymous',
+        candidateEmail: req.body.candidateEmail || ''
+      }
     });
-
   } catch (error) {
-    console.error('❌ Resume upload error:', error.message);
-
-    // Clean up file if it exists
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-
-    res.status(500).json({
-      success: false,
-      message: 'Failed to process resume file'
-    });
+    console.error('Resume upload error:', error);
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(500).json({ success: false, message: 'Failed to process resume' });
   }
 };
 
@@ -249,8 +141,14 @@ const uploadResume = async (req, res) => {
 async function extractTextFromPDFBuffer(buffer) {
   try {
     // Use the pdf-parse library to extract text from the PDF buffer
-    const data = await pdf(buffer);
-    return data.text || "No text content found in PDF";
+    // const data = await pdfParse(buffer);
+    // return data.text || "No text content found in PDF";
+    pdf(buffer).then(data=>{
+      console.log("data of resume",data.text);
+      return data.text;
+    })
+
+    return fullText || "no data in it";
   } catch (e) {
     console.error('PDF text extraction failed:', e);
     return "PDF content extraction failed. Please try a different file.";
@@ -374,6 +272,32 @@ const getFeedback = async (req, res) => {
   }
 };
 
+// Generate feedback
+const generateFeedback = async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) return res.status(400).json({ success: false, message: 'No sessionId provided' });
+
+    const session = interviewSessions.get(sessionId);
+    if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+    const prompt = generateFeedbackPrompt(session);
+
+    const result = await model.generateContent(prompt);
+    const feedbackText = result.response.text().trim();
+
+    global.interviewFeedback.set(sessionId, feedbackText);
+    interviewSessions.delete(sessionId);
+
+    res.json({ success: true, data: { feedback: feedbackText } });
+
+  } catch (error) {
+    console.error('Feedback generation error:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate feedback' });
+  }
+};
+
 // Save interview recording
 const saveRecording = async (req, res) => {
   try {
@@ -469,207 +393,100 @@ const saveRecording = async (req, res) => {
   }
 };
 
-// Updated createSession function to handle both old and new data structures
+// Create interview session
 const createSession = async (req, res) => {
   try {
-    // console.log('Request body:', req.body); // Add logging for debugging
-
-    // Handle both camelCase and snake_case properties
     const resumeText = req.body.resumeText || req.body.resume_text;
+    const candidate = req.body.candidate || {};
     const fileName = req.body.fileName || req.body.file_name;
     const fileSize = req.body.fileSize || req.body.file_size;
-    const candidate = req.body.candidate || {};
 
-    if (!resumeText || resumeText.trim().length < 10) {
-      console.error('Invalid resume text:', {
-        length: resumeText?.length,
-        sample: resumeText?.substring(0, 50)
-      });
+    if (!resumeText || resumeText.trim().length < 10)
+      return res.status(400).json({ success: false, message: 'Resume text too short' });
 
-      return res.status(400).json({
-        success: false,
-        message: `Resume text is required and must be at least 10 characters (received ${resumeText?.length || 0})`
-      });
-    }
+    if (!process.env.GEMINI_API_KEY)
+      return res.status(500).json({ success: false, message: 'AI service not configured' });
 
-    // Validate Gemini API key
-    if (!process.env.GEMINI_API_KEY) {
-      console.error('❌ Gemini API key not configured');
-      return res.status(500).json({
-        success: false,
-        message: "AI service not configured. Please check server configuration."
-      });
-    }
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2,9)}`;
+    console.log("session id",sessionId);
 
-    try {
+    let keySkills = extractKeySkills(resumeText);
+    if (keySkills.length === 0) keySkills = ['problem-solving','communication','teamwork'];
 
-
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
-      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-      // Extract key skills to focus the interview
-      const keySkills = extractKeySkills(resumeText);
-
-      // If no skills found, use generic ones
-      if (keySkills.length === 0) {
-        keySkills.push('problem-solving', 'communication', 'teamwork');
-      }
-
-      const prompt = `You are an expert technical interviewer conducting a job interview. 
+    const prompt = `You are an expert technical interviewer conducting a job interview.
 
 RESUME INFORMATION:
-${resumeText.substring(0, 500)}...
+${resumeText.substring(0,500)}...
 
 CANDIDATE SKILLS: ${keySkills.join(', ')}
 
-INSTRUCTIONS:
-1. Carefully analyze the resume content above
-2. Identify the most relevant experience or skill from the resume
-3. Ask a specific, targeted technical question about that experience or skill
-4. Make the question challenging but appropriate for an interview setting
-5. Focus on practical application of their skills
-
-Your question must:
-- Be directly related to something mentioned in their resume
-- Be specific and technical (not generic)
-- Be 15-20 words maximum
-- Contain no greetings or explanations
-- Test both knowledge and practical application
-
 Ask the first technical question now.`;
 
-      const result = await model.generateContent(prompt);
-      const question = result.response.text().trim();
+    const result = await model.generateContent(prompt);
+    console.log('rsult',result)
+    // return result
+    const question = result.response.text().trim();
 
-      // Store optimized session data
-      interviewSessions.set(sessionId, {
-        keySkills,
-        conversation: [{ role: "ai", content: question, timestamp: Date.now() }],
-        startTime: Date.now(),
-        questionCount: 1,
-        resumeSnippet: resumeText.substring(0, 300),
-        candidateInfo: {
-          name: candidate?.name || 'Anonymous',
-          email: candidate?.email || '',
-          fileName: fileName || 'resume.txt',
-          fileSize: fileSize || 0
-        }
-      });
+    interviewSessions.set(sessionId, {
+      keySkills,
+      conversation: [{ role: "ai", content: question, timestamp: Date.now() }],
+      startTime: Date.now(),
+      questionCount: 1,
+      resumeSnippet: resumeText.substring(0, 300),
+      candidateInfo: {
+        name: candidate?.name || 'Anonymous',
+        email: candidate?.email || '',
+        fileName: fileName || 'resume.txt',
+        fileSize: fileSize || 0
+      }
+    });
 
-      console.log('✅ Session created successfully:', sessionId);
-
-      res.json({
-        success: true,
-        data: {
-          sessionId,
-          question,
-          keySkills,
-          timeLimit: 120,
-          candidateName: candidate?.name || 'Anonymous'
-        }
-      });
-
-    } catch (aiError) {
-      console.error('❌ AI service error:', aiError.message);
-      res.status(500).json({
-        success: false,
-        message: "AI service temporarily unavailable. Please try again later."
-      });
-    }
+    res.json({ success: true, data: { sessionId, question, keySkills, timeLimit: 120, candidateName: candidate?.name || 'Anonymous' } });
 
   } catch (error) {
-    console.error("❌ Session creation error:", error.message);
-    console.error("Error stack:", error.stack);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create interview session. Please try again."
-    });
+    console.error('Session creation error:', error);
+    res.status(500).json({ success: false, message: 'Failed to create session' });
   }
 };
 
+// Continue interview
 const continueInterview = async (req, res) => {
   try {
     const { sessionId, userAnswer } = req.body;
-
-    // Validate input
-    if (!sessionId || !userAnswer || userAnswer.trim().length < 5) {
-      return res.status(400).json({
-        success: false,
-        message: "Session ID and valid answer (min 5 chars) required"
-      });
-    }
+    if (!sessionId || !userAnswer || userAnswer.trim().length < 5)
+      return res.status(400).json({ success: false, message: 'Invalid input' });
 
     const session = interviewSessions.get(sessionId);
-    if (!session) {
-      return res.status(404).json({
-        success: false,
-        message: "Session not found or expired"
-      });
-    }
+    if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
 
-    // Check if session has expired (2 minutes)
-    const sessionDuration = (Date.now() - session.startTime) / 1000;
-    if (sessionDuration > 120) {
+    const duration = (Date.now() - session.startTime)/1000;
+    if (duration > 120) {
       interviewSessions.delete(sessionId);
-      return res.status(408).json({
-        success: false,
-        message: "Session expired"
-      });
+      return res.status(408).json({ success: false, message: 'Session expired' });
     }
 
-    // Check if max questions reached
-    if (session.questionCount >= 5) {
-      return res.status(400).json({
-        success: false,
-        message: "Maximum questions reached"
-      });
-    }
+    if (session.questionCount >= 5) return res.status(400).json({ success: false, message: 'Maximum questions reached' });
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
-    // Add user answer to conversation
-    session.conversation.push({
-      role: "user",
-      content: userAnswer.trim(),
-      timestamp: Date.now()
-    });
-
-    // Generate next question with optimized prompt
+    session.conversation.push({ role: "user", content: userAnswer.trim(), timestamp: Date.now() });
     const nextQuestionNumber = session.questionCount + 1;
     const prompt = generateQuestionPrompt(session, nextQuestionNumber);
 
     const result = await model.generateContent(prompt);
     const nextQuestion = result.response.text().trim();
 
-    // Update session
-    session.conversation.push({
-      role: "ai",
-      content: nextQuestion,
-      timestamp: Date.now()
-    });
-    session.questionCount++;
+    session.conversation.push({ role: "ai", content: nextQuestion, timestamp: Date.now() });
+    session.questionCount = nextQuestionNumber;
 
-    const timeRemaining = Math.max(0, 120 - Math.floor(sessionDuration));
-
-    res.json({
-      success: true,
-      data: {
-        question: nextQuestion,
-        questionCount: session.questionCount,
-        timeRemaining,
-        isLastQuestion: session.questionCount === 5
-      }
-    });
+    res.json({ success: true, data: { question: nextQuestion, questionNumber: nextQuestionNumber } });
 
   } catch (error) {
-    console.error("❌ Interview continuation error:", error.message);
-    res.status(500).json({
-      success: false,
-      message: "Failed to continue interview"
-    });
+    console.error('Continue interview error:', error);
+    res.status(500).json({ success: false, message: 'Failed to continue interview' });
   }
 };
-
 // End interview and generate feedback
 const endInterview = async (req, res) => {
   try {
@@ -829,22 +646,13 @@ const getSessionStatus = async (req, res) => {
   }
 };
 
-// Cleanup expired sessions (call this periodically)
-const cleanupExpiredSessions = () => {
+// Cleanup expired sessions
+function cleanupExpiredSessions() {
   const now = Date.now();
-  let deletedCount = 0;
-
-  for (const [sessionId, session] of interviewSessions.entries()) {
-    if (now - session.startTime > 180000) { // 3 minutes buffer
-      interviewSessions.delete(sessionId);
-      deletedCount++;
-    }
+  for (const [key, session] of interviewSessions.entries()) {
+    if (now - session.startTime > 10*60*1000) interviewSessions.delete(key);
   }
-
-  if (deletedCount > 0) {
-    console.log(`🧹 Cleaned up ${deletedCount} expired sessions`);
-  }
-};
+}
 
 // Export all functions
 module.exports = {
