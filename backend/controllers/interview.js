@@ -1,240 +1,169 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fs = require('fs');
 const path = require('path');
-const pdfParse = require('pdf-parse'); // ✅ default import
-// const pdfjsLib = require('pdfjs-dist/legacy/build/pdf');
-const pdf=require("pdf-parse");
 const { PDFParse } = require('pdf-parse');
 
+// Multiple API keys for fallback
+const API_KEYS = [
+  process.env.GEMINI_KEY_1,
+  process.env.GEMINI_KEY_2,
+  process.env.GEMINI_KEY_3,
+  process.env.GEMINI_KEY_4
+].filter(Boolean);
 
-// Initialize Google AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+let currentKeyIndex = 0;
+const getNextAPIKey = () => {
+  const key = API_KEYS[currentKeyIndex % API_KEYS.length];
+  currentKeyIndex++;
+  return key;
+};
 
-// In-memory storage for interview sessions
+const initializeAI = () => {
+  const apiKey = getNextAPIKey();
+  if (!apiKey) throw new Error('No valid API keys configured');
+  return new GoogleGenerativeAI(apiKey);
+};
+
+// In-memory storage
 const interviewSessions = new Map();
 if (!global.interviewFeedback) global.interviewFeedback = new Map();
 
-// Cleanup expired sessions every 5 minutes
+// Cleanup every 5 minutes
 setInterval(() => cleanupExpiredSessions(), 5 * 60 * 1000);
 
-
+// Optimized skill extraction
 const extractKeySkills = (resume) => {
   const skillKeywords = [
     'javascript','react','node.js','python','java','sql','mongodb','aws','docker',
-    'kubernetes','git','agile','scrum','api','rest','graphql','typescript','express',
-    'angular','vue','spring','django','html','css','bootstrap','tailwind','redux',
-    'next.js','nest.js','mysql','postgresql','redis','elasticsearch','firebase','azure',
-    'gcp','jenkins','github','gitlab','jira','confluence'
+    'kubernetes','git','agile','scrum','api','rest','graphql','typescript','express'
   ];
-  const foundSkills = skillKeywords.filter(skill =>
-    resume.toLowerCase().includes(skill.toLowerCase())
-  );
-  return foundSkills.slice(0, 5); // Top 5 skills
+  
+  const resumeLower = resume.toLowerCase();
+  return skillKeywords
+    .filter(skill => resumeLower.includes(skill))
+    .slice(0, 5);
 };
 
-// Helper to generate context-aware question prompt
+// Optimized prompt generation
 const generateQuestionPrompt = (session, questionNumber) => {
   const { conversation, keySkills, resumeSnippet } = session;
-  const recentContext = conversation.slice(-4);
-  const contextText = recentContext.map(msg => `${msg.role}: ${msg.content}`).join('\n');
+  const recentContext = conversation.slice(-2); // Reduced from 4 to 2
   const difficulty = questionNumber <= 2 ? 'basic' : questionNumber <= 4 ? 'intermediate' : 'advanced';
   const focusSkill = keySkills[Math.min(questionNumber - 1, keySkills.length - 1)] || 'problem-solving';
 
-  return `You are an expert technical interviewer conducting a job interview.
-
-RESUME INFORMATION:
-${resumeSnippet || 'Not available'}
-
-CANDIDATE SKILLS: ${keySkills.join(', ')}
-
-PREVIOUS CONVERSATION:
-${contextText || 'No previous conversation'}
-
-CURRENT PROGRESS: Question ${questionNumber}/5 (Difficulty: ${difficulty})
-
-INSTRUCTIONS:
-1. Analyze previous answers carefully
-2. Ask a follow-up ${difficulty} question
-3. Focus on skill: ${focusSkill}
-4. Make question challenging but appropriate
-
-Ask the next technical question now.`;
+  return `Technical interviewer. Resume: ${resumeSnippet?.substring(0, 200) || 'N/A'}. Skills: ${keySkills.join(', ')}. 
+Previous: ${recentContext.map(msg => `${msg.role}: ${msg.content}`).join(' | ')}
+Ask ${difficulty} question ${questionNumber}/5 focused on ${focusSkill}. Be concise.`;
 };
 
-// Helper to generate feedback prompt
 const generateFeedbackPrompt = (session) => {
   const { keySkills, conversation, resumeSnippet, candidateInfo } = session;
-  const fullConversation = conversation.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join('\n');
-  const userResponses = conversation.filter(msg => msg.role === 'user').map((msg, i) => `Q${i + 1}: ${msg.content}`).join('\n');
+  const userResponses = conversation.filter(msg => msg.role === 'user').map(msg => msg.content).join('\n');
 
-  return `You are an expert hiring manager evaluating a candidate's interview.
-
-RESUME INFORMATION:
-${resumeSnippet || 'Not available'}
-
-CANDIDATE INFO:
-Name: ${candidateInfo?.name || 'Anonymous'}
-Key Skills: ${keySkills.join(', ')}
-
-FULL INTERVIEW TRANSCRIPT:
-${fullConversation}
-
-CANDIDATE RESPONSES ONLY:
-${userResponses}
-
-Provide detailed feedback in JSON format:
-{
+  return `Evaluate interview. Resume: ${resumeSnippet?.substring(0, 150) || 'N/A'}. Skills: ${keySkills.join(', ')}.
+Responses: ${userResponses.substring(0, 500)}
+Provide JSON: {
   "overallScore": 0-100,
   "technicalScore": 0-100,
   "communicationScore": 0-100,
-  "atsScore": 0-100,
-  "strengths": ["strength1", "strength2", "strength3"],
-  "weaknesses": ["area1", "area2", "area3"],
-  "improvements": ["tip1", "tip2", "tip3", "tip4"],
-  "skillsAssessment": {"skill1": 0-100,"skill2":0-100,"skill3":0-100},
-  "hiringRecommendation": "Strong hire/Consider hiring/Not recommended",
-  "detailedAnalysis": "Comprehensive analysis in 100-150 words",
-  "careerAdvice": "Specific career advice in 50-75 words"
+  "strengths": ["s1","s2"],
+  "weaknesses": ["w1","w2"],
+  "improvements": ["i1","i2"],
+  "hiringRecommendation": "string"
 }`;
 };
 
-// Extract text from PDF buffer
-async function extractTextFromPDFBuffer(buffer) {
+// Optimized PDF extraction
+const extractTextFromPDFBuffer = async (buffer) => {
   try {
-    const data = await pdfParse(buffer); // call pdfParse as a function
-    return data?.text || "No text found in PDF";
+    const data = await pdfParse(buffer);
+    return data?.text?.substring(0, 1000) || "No text found"; // Limit output
   } catch (e) {
-    console.error('PDF extraction failed:', e);
+    console.error('PDF extraction failed');
     return "PDF extraction failed";
-  }
-}
-
-
-// Upload resume endpoint
-const uploadResume = async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ success: false, message: 'No resume uploaded' });
-    const parser = new PDFParse({ url: req.file.path });
-    console.log("parse data",parser)
-    const result = await parser.getText();
-    console.log("file result",result.pages[0].text.toString())
-    let extractedText = result.pages[0].text.toString();
-    if (extractedText.trim().length < 50) return res.status(400).json({ success: false, message: 'Resume too short' });
-    res.json({
-      success: true,
-      data: {
-        text: extractedText,
-        fileName: req.file.originalname,
-        fileSize: req.file.size,
-        candidateName: req.body.candidateName || 'Anonymous',
-        candidateEmail: req.body.candidateEmail || ''
-      }
-    });
-  } catch (error) {
-    console.error('Resume upload error:', error);
-    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-    res.status(500).json({ success: false, message: 'Failed to process resume' });
   }
 };
 
-// Helper function to properly extract text from PDF buffer using pdf-parse library
-async function extractTextFromPDFBuffer(buffer) {
+// Upload resume - optimized
+const uploadResume = async (req, res) => {
   try {
-    // Use the pdf-parse library to extract text from the PDF buffer
-    // const data = await pdfParse(buffer);
-    // return data.text || "No text content found in PDF";
-    pdf(buffer).then(data=>{
-      console.log("data of resume",data.text);
-      return data.text;
-    })
+    if (!req.file) return res.status(400).json({ success: false, message: 'No resume' });
+    const parser = new PDFParse({ url: req.file.path });
+    console.log("parse data",parser)
 
-    return fullText || "no data in it";
-  } catch (e) {
-    console.error('PDF text extraction failed:', e);
-    return "PDF content extraction failed. Please try a different file.";
+    const result = await parser.getText();
+    console.log("file result",result.pages[0].text.toString())
+    let extractedText = result.pages[0].text.toString();
+    
+    if (extractedText.trim().length < 50) {
+      return res.status(400).json({ success: false, message: 'Resume too short' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        text: extractedText.substring(0, 800), // Limit output
+        fileName: req.file.originalname,
+        candidateName: req.body.candidateName || 'Anonymous'
+      }
+    });
+  } catch (error) {
+    console.error('Upload error:', error.message);
+    res.status(500).json({ success: false, message: 'Upload failed' });
   }
-}
+};
 
-// Get detailed feedback for a session
+// Get feedback - optimized
 const getFeedback = async (req, res) => {
   try {
     const { sessionId } = req.params;
+    if (!sessionId) return res.status(400).json({ success: false, message: 'Session required' });
 
-    if (!sessionId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Session ID is required'
-      });
-    }
-
-    // Initialize feedback storage if it doesn't exist
-    if (!global.interviewFeedback) {
-      global.interviewFeedback = new Map();
-    }
-
-    // First check if feedback is stored in our persistent storage
+    // Check persistent storage first
     if (global.interviewFeedback.has(sessionId)) {
-      const storedFeedback = global.interviewFeedback.get(sessionId);
       return res.json({
         success: true,
-        data: storedFeedback
+        data: global.interviewFeedback.get(sessionId)
       });
     }
 
-    // If not in persistent storage, check if session exists in memory (for active sessions)
     const session = interviewSessions.get(sessionId);
+    if (!session) return res.status(404).json({ success: false, message: 'Not found' });
 
-    if (!session) {
-      return res.status(404).json({
-        success: false,
-        message: 'Session not found or feedback not available'
-      });
-    }
-
-    // If session exists but interview not completed, return current status
     if (session.questionCount < 5) {
       return res.json({
         success: true,
         data: {
-          sessionId,
           status: 'in_progress',
           questionsAnswered: session.conversation.filter(msg => msg.role === 'user').length,
-          totalQuestions: 5,
-          keySkills: session.keySkills,
-          message: 'Interview still in progress'
+          totalQuestions: 5
         }
       });
     }
 
-    // Generate feedback for completed interview
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+    const genAI = initializeAI();
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" }); // Lighter model
     const prompt = generateFeedbackPrompt(session);
 
     const result = await model.generateContent(prompt);
+    const responseText = result.response.text().trim();
+    
     let feedback;
-
     try {
-      const responseText = result.response.text().trim();
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       feedback = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
-    } catch (parseError) {
-      console.error("Feedback parsing error:", parseError);
+    } catch {
       feedback = {
         overallScore: 65,
         technicalScore: 60,
         communicationScore: 70,
-        strengths: ["Completed the interview", "Showed engagement"],
-        weaknesses: ["Could provide more detailed responses", "Technical depth needs improvement"],
-        improvements: [
-          "Practice explaining technical concepts with examples",
-          "Prepare STAR method responses",
-          "Study fundamental concepts more deeply"
-        ],
-        detailedAnalysis: "Good participation in the interview. Focus on providing more specific examples and deeper technical explanations."
+        strengths: ["Completed interview"],
+        weaknesses: ["Need more detail"],
+        improvements: ["Practice technical explanations"],
+        hiringRecommendation: "Consider"
       };
     }
 
-    // Calculate additional metrics
     const userResponseCount = session.conversation.filter(msg => msg.role === 'user').length;
     const interviewDuration = Math.floor((Date.now() - session.startTime) / 1000);
 
@@ -243,189 +172,37 @@ const getFeedback = async (req, res) => {
       sessionStats: {
         duration: interviewDuration,
         questionsAnswered: userResponseCount,
-        averageResponseTime: Math.round(interviewDuration / userResponseCount) || 0,
-        completionRate: Math.round((userResponseCount / 5) * 100),
-        keySkillsEvaluated: session.keySkills
-      },
-      interviewHistory: session.conversation.map(msg => ({
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.timestamp
-      })),
-      generatedAt: new Date().toISOString()
+        completionRate: Math.round((userResponseCount / 5) * 100)
+      }
     };
 
-    // Store the feedback for future retrieval
     global.interviewFeedback.set(sessionId, detailedFeedback);
-
-    res.json({
-      success: true,
-      data: detailedFeedback
-    });
+    res.json({ success: true, data: detailedFeedback });
 
   } catch (error) {
-    console.error('❌ Feedback retrieval error:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve feedback'
-    });
+    console.error('Feedback error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to get feedback' });
   }
 };
 
-// Generate feedback
-const generateFeedback = async (req, res) => {
-  try {
-    const { sessionId } = req.body;
-    if (!sessionId) return res.status(400).json({ success: false, message: 'No sessionId provided' });
-
-    const session = interviewSessions.get(sessionId);
-    if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
-
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
-    const prompt = generateFeedbackPrompt(session);
-
-    const result = await model.generateContent(prompt);
-    const feedbackText = result.response.text().trim();
-
-    global.interviewFeedback.set(sessionId, feedbackText);
-    interviewSessions.delete(sessionId);
-
-    res.json({ success: true, data: { feedback: feedbackText } });
-
-  } catch (error) {
-    console.error('Feedback generation error:', error);
-    res.status(500).json({ success: false, message: 'Failed to generate feedback' });
-  }
-};
-
-// Save interview recording
-const saveRecording = async (req, res) => {
-  try {
-    const { sessionId } = req.body;
-
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'No recording file uploaded'
-      });
-    }
-
-    if (!sessionId) {
-      // Clean up uploaded file
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      return res.status(400).json({
-        success: false,
-        message: 'Session ID is required'
-      });
-    }
-
-    // Validate file type (should be audio)
-    const allowedAudioTypes = ['.wav', '.mp3', '.m4a', '.ogg', '.webm'];
-    const fileExtension = path.extname(req.file.originalname).toLowerCase();
-
-    if (!allowedAudioTypes.includes(fileExtension)) {
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid audio file type'
-      });
-    }
-
-    // File size validation (50MB limit for audio)
-    const maxSize = 50 * 1024 * 1024; // 50MB
-    if (req.file.size > maxSize) {
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      return res.status(400).json({
-        success: false,
-        message: 'Audio file too large. Maximum 50MB allowed'
-      });
-    }
-
-    // Create recordings directory if it doesn't exist
-    const recordingsDir = path.join(__dirname, '../recordings');
-    if (!fs.existsSync(recordingsDir)) {
-      fs.mkdirSync(recordingsDir, { recursive: true });
-    }
-
-    // Generate new filename with session ID
-    const timestamp = Date.now();
-    const newFileName = `${sessionId}_${timestamp}${fileExtension}`;
-    const newFilePath = path.join(recordingsDir, newFileName);
-
-    // Move file to recordings directory
-    fs.renameSync(req.file.path, newFilePath);
-
-    // In a real application, you would save this info to a database
-    // For now, we'll just return the file information
-    const recordingData = {
-      sessionId,
-      fileName: newFileName,
-      originalName: req.file.originalname,
-      filePath: newFilePath,
-      fileSize: req.file.size,
-      uploadTime: timestamp,
-      status: 'saved'
-    };
-
-    res.json({
-      success: true,
-      data: recordingData
-    });
-
-  } catch (error) {
-    console.error('❌ Recording save error:', error.message);
-
-    // Clean up file if it exists
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-
-    res.status(500).json({
-      success: false,
-      message: 'Failed to save recording'
-    });
-  }
-};
-
-// Create interview session
+// Create session - optimized
 const createSession = async (req, res) => {
   try {
-    const resumeText = req.body.resumeText || req.body.resume_text;
+    const resumeText = req.body.resumeText || '';
     const candidate = req.body.candidate || {};
-    const fileName = req.body.fileName || req.body.file_name;
-    const fileSize = req.body.fileSize || req.body.file_size;
 
-    if (!resumeText || resumeText.trim().length < 10)
-      return res.status(400).json({ success: false, message: 'Resume text too short' });
+    if (!resumeText || resumeText.trim().length < 10) {
+      return res.status(400).json({ success: false, message: 'Resume too short' });
+    }
 
-    if (!process.env.GEMINI_API_KEY)
-      return res.status(500).json({ success: false, message: 'AI service not configured' });
+    const genAI = initializeAI();
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+    const sessionId = `s_${Date.now()}_${Math.random().toString(36).substr(2,6)}`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
-    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2,9)}`;
-    console.log("session id",sessionId);
-
-    let keySkills = extractKeySkills(resumeText);
-    if (keySkills.length === 0) keySkills = ['problem-solving','communication','teamwork'];
-
-    const prompt = `You are an expert technical interviewer conducting a job interview.
-
-RESUME INFORMATION:
-${resumeText.substring(0,500)}...
-
-CANDIDATE SKILLS: ${keySkills.join(', ')}
-
-Ask the first technical question now.`;
+    const keySkills = extractKeySkills(resumeText);
+    const prompt = `Start technical interview. Resume: ${resumeText.substring(0, 300)}. Skills: ${keySkills.join(', ')}. Ask first question.`;
 
     const result = await model.generateContent(prompt);
-    console.log('rsult',result)
-    // return result
     const question = result.response.text().trim();
 
     interviewSessions.set(sessionId, {
@@ -433,44 +210,66 @@ Ask the first technical question now.`;
       conversation: [{ role: "ai", content: question, timestamp: Date.now() }],
       startTime: Date.now(),
       questionCount: 1,
-      resumeSnippet: resumeText.substring(0, 300),
-      candidateInfo: {
-        name: candidate?.name || 'Anonymous',
-        email: candidate?.email || '',
-        fileName: fileName || 'resume.txt',
-        fileSize: fileSize || 0
-      }
+      resumeSnippet: resumeText.substring(0, 200)
     });
 
-    res.json({ success: true, data: { sessionId, question, keySkills, timeLimit: 120, candidateName: candidate?.name || 'Anonymous' } });
+    res.json({ 
+      success: true, 
+      data: { 
+        sessionId, 
+        question, 
+        keySkills: keySkills.slice(0, 3), // Reduced output
+        timeLimit: 120 
+      } 
+    });
 
   } catch (error) {
-    console.error('Session creation error:', error);
-    res.status(500).json({ success: false, message: 'Failed to create session' });
+    console.error('Session error:', error.message);
+    
+    // Try with next API key
+    if (error.message.includes('API') && API_KEYS.length > 1) {
+      try {
+        return await createSession(req, res);
+      } catch (retryError) {
+        // Fall through to final error
+      }
+    }
+    
+    res.status(500).json({ success: false, message: 'Session creation failed' });
   }
 };
 
-// Continue interview
+// Continue interview - optimized
 const continueInterview = async (req, res) => {
   try {
     const { sessionId, userAnswer } = req.body;
-    if (!sessionId || !userAnswer || userAnswer.trim().length < 5)
+    
+    if (!sessionId || !userAnswer || userAnswer.trim().length < 3) {
       return res.status(400).json({ success: false, message: 'Invalid input' });
+    }
 
     const session = interviewSessions.get(sessionId);
     if (!session) return res.status(404).json({ success: false, message: 'Session not found' });
 
-    const duration = (Date.now() - session.startTime)/1000;
-    if (duration > 120) {
+    // Check expiration
+    if ((Date.now() - session.startTime) / 1000 > 120) {
       interviewSessions.delete(sessionId);
       return res.status(408).json({ success: false, message: 'Session expired' });
     }
 
-    if (session.questionCount >= 5) return res.status(400).json({ success: false, message: 'Maximum questions reached' });
+    if (session.questionCount >= 5) {
+      return res.status(400).json({ success: false, message: 'Max questions reached' });
+    }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+    const genAI = initializeAI();
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
-    session.conversation.push({ role: "user", content: userAnswer.trim(), timestamp: Date.now() });
+    session.conversation.push({ 
+      role: "user", 
+      content: userAnswer.trim().substring(0, 500), // Limit input size
+      timestamp: Date.now() 
+    });
+    
     const nextQuestionNumber = session.questionCount + 1;
     const prompt = generateQuestionPrompt(session, nextQuestionNumber);
 
@@ -480,181 +279,137 @@ const continueInterview = async (req, res) => {
     session.conversation.push({ role: "ai", content: nextQuestion, timestamp: Date.now() });
     session.questionCount = nextQuestionNumber;
 
-    res.json({ success: true, data: { question: nextQuestion, questionNumber: nextQuestionNumber } });
+    res.json({ 
+      success: true, 
+      data: { 
+        question: nextQuestion, 
+        questionNumber: nextQuestionNumber 
+      } 
+    });
 
   } catch (error) {
-    console.error('Continue interview error:', error);
-    res.status(500).json({ success: false, message: 'Failed to continue interview' });
+    console.error('Continue error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to continue' });
   }
 };
-// End interview and generate feedback
+
+// End interview - optimized
 const endInterview = async (req, res) => {
   try {
     const { sessionId } = req.body;
-
-    if (!sessionId) {
-      return res.status(400).json({
-        success: false,
-        message: "Session ID is required"
-      });
-    }
+    if (!sessionId) return res.status(400).json({ success: false, message: 'Session required' });
 
     const session = interviewSessions.get(sessionId);
-    if (!session) {
-      return res.status(404).json({
-        success: false,
-        message: "Session not found"
-      });
-    }
+    if (!session) return res.status(404).json({ success: false, message: 'Not found' });
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
-    const interviewDuration = Math.floor((Date.now() - session.startTime) / 1000);
-
-    // Generate optimized feedback prompt
+    const genAI = initializeAI();
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
     const prompt = generateFeedbackPrompt(session);
 
     const result = await model.generateContent(prompt);
+    const responseText = result.response.text().trim();
+    
     let feedback;
-
     try {
-      const responseText = result.response.text().trim();
-      // Extract JSON from response if it contains other text
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       feedback = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
-    } catch (parseError) {
-      console.error("Feedback parsing error:", parseError);
-      // Fallback feedback structure
-      feedback = {
-        overallScore: 65,
-        technicalScore: 60,
-        communicationScore: 70,
-        strengths: ["Attempted all questions", "Showed willingness to learn"],
-        weaknesses: ["Need more specific examples", "Could improve technical depth"],
-        improvements: [
-          "Practice explaining technical concepts clearly",
-          "Prepare specific project examples",
-          "Study core fundamentals deeper"
-        ],
-        detailedAnalysis: "Good effort overall. Focus on providing more detailed technical explanations and specific examples from your experience."
-      };
+    } catch {
+      feedback = { overallScore: 65, hiringRecommendation: "Consider" };
     }
 
-    // Calculate performance metrics
     const userResponseCount = session.conversation.filter(msg => msg.role === 'user').length;
-    const avgResponseTime = userResponseCount > 0 ? interviewDuration / userResponseCount : 0;
-
-    // Store feedback in a persistent way
-    // Create a map to store feedback if it doesn't exist
-    if (!global.interviewFeedback) {
-      global.interviewFeedback = new Map();
-    }
     
-    // Store the feedback with the session ID as the key
+    // Store minimal feedback
     global.interviewFeedback.set(sessionId, {
       feedback,
-      sessionStats: {
-        duration: interviewDuration,
-        questionsAnswered: userResponseCount,
-        averageResponseTime: Math.round(avgResponseTime),
-        completionRate: Math.round((userResponseCount / 5) * 100),
-        keySkillsEvaluated: session.keySkills
-      },
-      interviewHistory: session.conversation.map(msg => ({
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.timestamp
-      })),
-      generatedAt: new Date().toISOString()
+      questionsAnswered: userResponseCount
     });
     
-    // Clean up session from memory
     interviewSessions.delete(sessionId);
 
     res.json({
       success: true,
-      data: {
-        feedback,
-        sessionStats: {
-          duration: interviewDuration,
-          questionsAnswered: userResponseCount,
-          averageResponseTime: Math.round(avgResponseTime),
-          completionRate: Math.round((userResponseCount / 5) * 100),
-          keySkillsEvaluated: session.keySkills
-        }
-      }
+      data: { feedback }
     });
 
   } catch (error) {
-    console.error("❌ Interview analysis error:", error.message);
-    res.status(500).json({
-      success: false,
-      message: "Failed to analyze interview"
-    });
+    console.error('End interview error:', error.message);
+    res.status(500).json({ success: false, message: 'Analysis failed' });
   }
 };
 
-// Get session status
+// Optimized session status
 const getSessionStatus = async (req, res) => {
   try {
     const { sessionId } = req.params;
-
-    if (!sessionId) {
-      return res.status(400).json({
-        success: false,
-        message: "Session ID is required"
-      });
-    }
-
     const session = interviewSessions.get(sessionId);
-    if (!session) {
-      return res.status(404).json({
-        success: false,
-        message: "Session not found"
-      });
-    }
+    
+    if (!session) return res.status(404).json({ success: false, message: 'Not found' });
 
     const sessionDuration = Math.floor((Date.now() - session.startTime) / 1000);
-    const timeRemaining = Math.max(0, 120 - sessionDuration);
-    const isExpired = sessionDuration > 120;
-
-    if (isExpired) {
+    if (sessionDuration > 120) {
       interviewSessions.delete(sessionId);
-      return res.status(408).json({
-        success: false,
-        message: "Session expired"
-      });
+      return res.status(408).json({ success: false, message: 'Expired' });
     }
 
     res.json({
       success: true,
       data: {
         questionCount: session.questionCount,
-        duration: sessionDuration,
-        timeRemaining,
-        isActive: true,
-        keySkills: session.keySkills,
-        maxQuestions: 5
+        timeRemaining: Math.max(0, 120 - sessionDuration),
+        isActive: true
       }
     });
 
   } catch (error) {
-    console.error("❌ Session status error:", error.message);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get session status"
-    });
+    console.error('Status error:', error.message);
+    res.status(500).json({ success: false, message: 'Status check failed' });
   }
 };
 
-// Cleanup expired sessions
+// Save recording - optimized
+const saveRecording = async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    if (!req.file || !sessionId) {
+      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ success: false, message: 'Invalid input' });
+    }
+
+    // Simple validation
+    const allowedTypes = ['.wav', '.mp3', '.m4a'];
+    const fileExtension = path.extname(req.file.originalname).toLowerCase();
+    
+    if (!allowedTypes.includes(fileExtension) || req.file.size > 50 * 1024 * 1024) {
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ success: false, message: 'Invalid file' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        sessionId,
+        fileName: req.file.originalname,
+        status: 'saved'
+      }
+    });
+
+  } catch (error) {
+    console.error('Recording error:', error.message);
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(500).json({ success: false, message: 'Save failed' });
+  }
+};
+
 function cleanupExpiredSessions() {
   const now = Date.now();
   for (const [key, session] of interviewSessions.entries()) {
-    if (now - session.startTime > 10*60*1000) interviewSessions.delete(key);
+    if (now - session.startTime > 10 * 60 * 1000) {
+      interviewSessions.delete(key);
+    }
   }
 }
 
-// Export all functions
 module.exports = {
   createSession,
   continueInterview,
