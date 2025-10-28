@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import CodewayLogo from "../../utils/logo/codeway-logo.png";
 import { getSocket } from "../../utils/socket"; // Import socket utility
+import { FaCode } from "react-icons/fa";
 
 const Navbar = () => {
   const dispatch = useDispatch();
@@ -134,11 +135,7 @@ const Navbar = () => {
                 className="group relative overflow-hidden flex items-center space-x-3"
               >
                 <div className="relative">
-                  <img
-                    className="h-10 w-auto transition-transform duration-300 group-hover:scale-105"
-                    src={CodewayLogo}
-                    alt="The Codeway"
-                  />
+                  <FaCode className="w-6 h-6 text-orange-400" />
                   <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-amber-400/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
                 </div>
                 <div className="hidden lg:block">

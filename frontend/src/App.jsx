@@ -37,6 +37,7 @@ import { DSAVisualizer } from "./pages/DSAVisualizer";
 import Interview from "./pages/Interview";
 import PremiumDashboard from "./components/Dashboards/PremiumDashboard";
 import Premium from "./components/common/Premium";
+import AiAssistant from "./components/common/AiAssistant";
 
 const ContestLeaderboardWrapper = () => {
   const { contestId } = useParams();
@@ -286,9 +287,15 @@ const App = () => {
               }
             />
             <Route
+              path="/doubt-assistant"
+              element={
+                isAuthenticated ? <AiAssistant/> : <Navigate to={"/login"} />
+              }
+            />
+            <Route
               path="/doubt-ai"
               element={
-                isAuthenticated ? <DoubtAI /> : <Navigate to={"/login"} />
+                isAuthenticated ? <DoubtAI/> : <Navigate to={"/login"} />
               }
             />
             <Route

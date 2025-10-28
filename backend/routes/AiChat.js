@@ -15,7 +15,7 @@ aiRouter.post("/chat", userMiddleware, checkPremiumAndTokens, DoubtAi);
 
 // AI Assistant endpoint (available to all users, but user context is helpful)
 // Using optionalUserMiddleware to get user info if available, but not require login
-aiRouter.get("/assistant", userMiddleware, handleAssistantQuery);
+aiRouter.post("/assistant", userMiddleware, handleAssistantQuery);
 
 // Health check endpoint for AI services
 aiRouter.get("/health", (req, res) => {

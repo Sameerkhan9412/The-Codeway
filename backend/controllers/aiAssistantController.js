@@ -6,7 +6,7 @@ const handleAssistantQuery = async (req, res) => {
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY_1);
 
   try {
     const { query } = req.query;
@@ -14,7 +14,7 @@ const handleAssistantQuery = async (req, res) => {
       return res.status(400).json({ error: 'Query parameter is required' });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
     const platformContext = `
       You are Codeway, an AI assistant for a comprehensive coding platform designed to help developers improve their programming skills.

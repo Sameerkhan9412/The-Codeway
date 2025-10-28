@@ -70,8 +70,8 @@ const AiAssistant = () => {
     setIsTyping(true);
 
     try {
-      const token = localStorage.getItem("authToken");
-      if (!token) {
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) {
         setMessages((prevMessages) => [
           ...prevMessages,
           {
@@ -87,13 +87,14 @@ const AiAssistant = () => {
       }
 
       const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-      const response = await fetch(`${baseURL}/ai/assistant?query=${encodeURIComponent(messageText)}`, {
+      const response = await fetch(`${baseURL}/ai/assistant?query=${encodeURIComponent(messageText)}`,{
+       method: 'POST',
         headers: {
-          'Accept': 'text/event-stream',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
         },
       });
-
+      console.log("hhhh",response)
       if (!response.body) {
         throw new Error("Streaming not supported or response body is empty.");
       }

@@ -88,6 +88,7 @@ import {
   X,
   ChevronDown
 } from 'lucide-react'
+import AiAssistant from '../components/common/AiAssistant'
 
 // Enhanced mock data
 const mockUser = {
@@ -1031,6 +1032,7 @@ const Homepage = () => {
               </div>
             </div>
           </div>
+          <AiAssistant/>
         </div>
       </footer>
     </div>
