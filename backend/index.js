@@ -13,7 +13,6 @@ const rateLimiter = require("./middleware/rateLimiter");
 const submissionRouter = require("./routes/submit")
 const cors = require("cors");
 const aiRouter = require("./routes/AiChat");
-const videoRouter = require("./routes/Video")
 const payRoute = require("./routes/payment");
 const interviewRouter = require("./routes/aiInterview");
 const contestRouter = require("./routes/contestRoute");
@@ -23,6 +22,7 @@ const dsaRouter = require("./routes/dsa");
 
 const { autoFinalizeContestRankings } = require("./controllers/leaderboardController");
 const cron = require("node-cron");
+const videoRouter = require("./routes/Video");
 
 
 const PORT_NO = process.env.PORT_NO;
@@ -47,7 +47,7 @@ app.use("/api/user", authRouter);
 app.use("/api/problem", problemRouter);
 app.use("/api/submission", submissionRouter)
 app.use("/api/ai", aiRouter)
-app.use("/api/video", videoRouter)
+app.use("/api/video", videoRouter);
 app.use("/api/payments", payRoute);
 app.use("/api/ai", interviewRouter);
 app.use("/api/contest", contestRouter)

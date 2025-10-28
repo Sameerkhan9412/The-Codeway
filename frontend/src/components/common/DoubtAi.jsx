@@ -25,7 +25,7 @@ function DoubtAI({ problem }) {
       role: "model",
       parts: [
         {
-          text: "Hi there! 👋 I'm DobutAI, your expert coding assistant.\n\nHere's what I can help you with:\n\n🔹 **Code explanations** - Understand complex code\n🔹 **Debugging help** - Find and fix bugs\n🔹 **Algorithm design** - Optimize your solutions\n🔹 **Solution optimization** - Improve performance\n\n💡 Tip: You can ask me to explain concepts, write code, or help debug your solutions.\n\nWhat would you like to work on today?",
+          text: "Hi there! 👋 I'm DoubtAI, your expert coding assistant.\n\nHere's what I can help you with:\n\n🔹 **Code explanations** - Understand complex code\n🔹 **Debugging help** - Find and fix bugs\n🔹 **Algorithm design** - Optimize your solutions\n🔹 **Solution optimization** - Improve performance\n\n💡 Tip: You can ask me to explain concepts, write code, or help debug your solutions.\n\nWhat would you like to work on today?",
         },
       ],
       timestamp: new Date(),
@@ -405,7 +405,8 @@ function DoubtAI({ problem }) {
         return;
       }
 
-      const response = await fetch(`/api/ai/chat`, {
+      // Use fetch for SSE streaming (axios doesn't support SSE properly)
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -422,11 +423,12 @@ function DoubtAI({ problem }) {
 
       if (!response.ok) {
         const errorData = await response.text();
-        throw new Error(errorData || "An unknown error occurred");
+        throw new Error(errorData || "Failed to get response from AI");
       }
 
       dispatch(getProfile());
 
+      // Handle SSE streaming
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let buffer = "";
@@ -561,7 +563,7 @@ function DoubtAI({ problem }) {
             </div>
             <div>
               <h1 className="font-semibold text-lg flex items-center gap-2">
-                DobutAI
+                DoubtAI
                 <span className="text-xs bg-orange-600/20 text-orange-400 px-2 py-1 rounded-full flex items-center gap-1">
                   <Sparkles size={12} /> Pro
                 </span>
@@ -748,7 +750,7 @@ function DoubtAI({ problem }) {
                   style={{ animationDelay: "0.4s" }}
                 ></div>
               </div>
-              <span>DobutAI is generating your response...</span>
+              <span>DoubtAI is generating your response...</span>
             </div>
           )}
         </div>

@@ -25,7 +25,7 @@ const DoubtAi = async (req, res) => {
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY_1);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
     const context = [
