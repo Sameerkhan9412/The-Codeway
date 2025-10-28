@@ -18,12 +18,12 @@ const createProblem = async (req, res) => {
             // langauge id
             const languageId = getLanguageById(language);
 
-            // submission array creating
+            // submission array creating - manual output comparison
             const submission = visibleTestCases.map((testcase) => ({
                 source_code: completeCode,
                 language_id: languageId,
                 stdin: testcase.input,
-                expected_output: testcase.output,
+                // expected_output: testcase.output, // Removed - manual comparison
             }));
             const submitResult = await SubmitBatch(submission);
             if (!submitResult || !Array.isArray(submitResult)) {
@@ -33,10 +33,18 @@ const createProblem = async (req, res) => {
             const resultToken = submitResult.map((value) => value.token); // creates the array and returns the token
             const testResult = await submitToken(resultToken)
 
-            // check the test cases
+            // check the test cases with manual output comparison
             for (let i = 0; i < testResult.length; i++) {
                 const test = testResult[i];
-                if (test.status_id !== 3) {
+                const statusId = test.status?.id || test.status_id;
+                const expectedOutput = visibleTestCases[i].output;
+                const actualOutput = test.stdout;
+
+                // Normalize outputs for comparison
+                const normalizedExpected = expectedOutput?.trim() || '';
+                const normalizedActual = actualOutput?.trim() || '';
+
+                if (statusId !== 3 || normalizedExpected !== normalizedActual) {
                     const failedTestCase = visibleTestCases[i];
                     return res.status(400).json({
                         message: `Reference solution for ${language} failed on a visible test case.`,
@@ -50,6 +58,9 @@ const createProblem = async (req, res) => {
                                 status: test.status,
                                 stdout: test.stdout,
                                 stderr: test.stderr,
+                                actualOutput: normalizedActual,
+                                expectedOutput: normalizedExpected,
+                                outputMatch: normalizedExpected === normalizedActual
                             },
                         },
                     });
@@ -97,12 +108,12 @@ const updateProblem = async (req, res) => {
             // langauge id
             const languageId = getLanguageById(language);
 
-            // submission array creating
+            // submission array creating - manual output comparison
             const submission = visibleTestCases.map((testcase) => ({
                 source_code: completeCode,
                 language_id: languageId,
                 stdin: testcase.input,
-                expected_output: testcase.output,
+                // expected_output: testcase.output, // Removed - manual comparison
             }));
 
 
@@ -115,10 +126,20 @@ const updateProblem = async (req, res) => {
             const resultToken = submitResult.map((value) => value.token); // creates the array and returns the token
             const testResult = await submitToken(resultToken)
 
-            // check the test cases
-            for (const test of testResult) {
-                if (test.status_id != 3)
-                    return res.status(400).send("Error Occured Status_code is not equal to 3 ");
+            // check the test cases with manual output comparison
+            for (let i = 0; i < testResult.length; i++) {
+                const test = testResult[i];
+                const statusId = test.status?.id || test.status_id;
+                const expectedOutput = visibleTestCases[i].output;
+                const actualOutput = test.stdout;
+
+                // Normalize outputs for comparison
+                const normalizedExpected = expectedOutput?.trim() || '';
+                const normalizedActual = actualOutput?.trim() || '';
+
+                if (statusId != 3 || normalizedExpected !== normalizedActual) {
+                    return res.status(400).send(`Reference solution for ${language} failed on test case ${i + 1}. Expected: "${normalizedExpected}", Got: "${normalizedActual}"`);
+                }
             }
 
             // update the problem 

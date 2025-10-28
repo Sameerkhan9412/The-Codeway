@@ -35,6 +35,8 @@ import DiscussionDetail from "./pages/DiscussionDetail";
 import DiscussPage from "./pages/DiscussPage";
 import { DSAVisualizer } from "./pages/DSAVisualizer";
 import Interview from "./pages/Interview";
+import PremiumDashboard from "./components/Dashboards/PremiumDashboard";
+import Premium from "./components/common/Premium";
 
 const ContestLeaderboardWrapper = () => {
   const { contestId } = useParams();
@@ -247,6 +249,18 @@ const App = () => {
                 ) : (
                   <Navigate to={"/login"} />
                 )
+              }
+            />
+            <Route
+              path="/premium"
+              element={
+                isAuthenticated ? <Premium/> : <Navigate to={"/login"} />
+              }
+            />
+            <Route
+              path="/premium-dashboard"
+              element={
+                isAuthenticated ? <PremiumDashboard /> : <Navigate to={"/login"} />
               }
             />
             <Route

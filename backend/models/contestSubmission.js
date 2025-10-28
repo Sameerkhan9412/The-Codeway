@@ -28,7 +28,7 @@ const ContestSubmissionSchema = new Schema({
     },
     status: {
         type: String,
-        enum: ["Pending", "Processing", "Accepted", "Wrong Answer", "Compiler Error"],
+        enum: ["Pending", "Processing", "Accepted", "Wrong Answer", "Compiler Error","Processing"],
         default: "Pending",
     },
     runtime: {

@@ -99,12 +99,12 @@ exports.submitContestCode = async (req, res) => {
             });
         }
 
-        // Prepare test cases
+        // Prepare test cases - don't send expected_output, we'll compare manually
         const testCases = problem.hiddenTestCases.map(testcase => ({
             source_code: code,
             language_id: languageId,
             stdin: testcase.input,
-            expected_output: testcase.output,
+            // expected_output: testcase.output, // Removed - manual comparison
         }));
 
         // Submit to Judge0
@@ -124,14 +124,45 @@ exports.submitContestCode = async (req, res) => {
         let status = "Accepted";
         let errorMessage = null;
 
-        for (const result of testResults) {
-            if (result.status.id === 3) { // Accepted
-                testCasesPassed++;
-                runtime += parseFloat(result.time || 0);
-                memory = Math.max(memory, parseInt(result.memory || 0));
+        for (let i = 0; i < testResults.length; i++) {
+            const result = testResults[i];
+            const statusId = result.status?.id || result.status_id;
+            const expectedOutput = problem.hiddenTestCases[i]?.output;
+            const actualOutput = result.stdout;
+
+            // Normalize outputs for comparison (trim whitespace)
+            const normalizedExpected = expectedOutput?.trim() || '';
+            const normalizedActual = actualOutput?.trim() || '';
+
+            if (statusId === 3) { // Code executed successfully
+                // Now check if output matches
+                if (normalizedExpected === normalizedActual) {
+                    testCasesPassed++;
+                    runtime += parseFloat(result.time || 0);
+                    memory = Math.max(memory, parseInt(result.memory || 0));
+                } else {
+                    status = "Wrong Answer";
+                    errorMessage = `Expected: ${normalizedExpected.substring(0, 50)}, Got: ${normalizedActual.substring(0, 50)}`;
+                    break;
+                }
             } else {
-                status = "Wrong Answer";
-                errorMessage = result.compile_output || result.stderr || "Test case failed";
+                // Determine error type based on status ID
+                if (statusId === 4) {
+                    status = "Wrong Answer";
+                    errorMessage = result.stderr || result.compile_output || "Wrong Answer";
+                } else if (statusId === 6) {
+                    status = "Compilation Error";
+                    errorMessage = result.compile_output || result.stderr || "Compilation Error";
+                } else if (statusId === 5) {
+                    status = "Time Limit Exceeded";
+                    errorMessage = "Time Limit Exceeded";
+                } else if (statusId === 7 || statusId === 8 || statusId === 9 || statusId === 10 || statusId === 11 || statusId === 12) {
+                    status = "Runtime Error";
+                    errorMessage = result.stderr || result.message || "Runtime Error";
+                } else {
+                    status = result.status?.description || "Error";
+                    errorMessage = result.stderr || result.compile_output || result.message || "Test case failed";
+                }
                 break;
             }
         }
@@ -286,12 +317,12 @@ exports.runContestCode = async (req, res) => {
             });
         }
 
-        // Prepare visible test cases for Judge0 (not hidden ones)
+        // Prepare visible test cases for Judge0 (not hidden ones) - manual comparison
         const testCases = problem.visibleTestCases.map(testcase => ({
             source_code: code,
             language_id: languageId,
             stdin: testcase.input,
-            expected_output: testcase.output,
+            // expected_output: testcase.output, // Removed - manual comparison
         }));
 
         // Submit to Judge0
@@ -316,14 +347,28 @@ exports.runContestCode = async (req, res) => {
 
         // Map testResults to include passed, input, expectedOutput, actualOutput, error, runtime
         const transformedTestCases = testResults.map((test, index) => {
-            const passed = test.status.id === 3;
+            const statusId = test.status?.id || test.status_id;
+            const expectedOutput = problem.visibleTestCases[index]?.output;
+            const actualOutput = test.stdout;
+
+            // Normalize outputs for comparison (trim whitespace)
+            const normalizedExpected = expectedOutput?.trim() || '';
+            const normalizedActual = actualOutput?.trim() || '';
+
+            // Check if code executed AND output matches
+            const passed = (statusId === 3) && (normalizedExpected === normalizedActual);
+
             if (passed) {
                 testCasesPassed++;
-                runtime += parseFloat(test.time);
-                memory = Math.max(memory, test.memory);
+                runtime += parseFloat(test.time || 0);
+                memory = Math.max(memory, parseInt(test.memory || 0));
             } else {
                 status = false;
-                errorMessage = test.stderr || test.compile_output || "Execution Error";
+                if (statusId === 3 && normalizedExpected !== normalizedActual) {
+                    errorMessage = "Wrong Answer";
+                } else {
+                    errorMessage = test.stderr || test.compile_output || "Execution Error";
+                }
             }
 
             return {

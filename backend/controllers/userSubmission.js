@@ -58,6 +58,15 @@ const submitCode = async (req, res) => {
             });
         }
 
+        // Debug: Log hidden test cases
+        console.log("submitCode: Hidden test cases count:", problem.hiddenTestCases.length);
+        problem.hiddenTestCases.forEach((tc, idx) => {
+            console.log(`submitCode: Hidden TC ${idx + 1} - Input length: ${tc.input?.length || 0}, Output length: ${tc.output?.length || 0}`);
+            if (!tc.output || tc.output.trim() === '') {
+                console.warn(`⚠️ submitCode: Hidden test case ${idx + 1} has empty or missing output!`);
+            }
+        });
+
         const referenceSolution = problem.referenceSolution.find(rs => rs.language.toLowerCase() === language.toLowerCase());
         const startCode = problem.startCode.find(sc => sc.language.toLowerCase() === language.toLowerCase());
 
@@ -66,11 +75,12 @@ const submitCode = async (req, res) => {
             finalCode = referenceSolution.completeCode.replace(startCode.initialCode, code);
         }
 
+        // Don't send expected_output to Judge0 - we'll compare manually
         const submission = problem.hiddenTestCases.map((testcase) => ({
             source_code: finalCode,
             language_id: languageId,
             stdin: testcase.input,
-            expected_output: testcase.output,
+            // expected_output: testcase.output, // Removed - manual comparison
         }));
         console.log("submitCode: Prepared submission batch");
 
@@ -91,22 +101,65 @@ const submitCode = async (req, res) => {
         let errorMessage = null;
         let status = "Accepted";
 
-        for (const test of testResult) {
-            if (test.status_id == 3) {
-                testCasesPassed++;
-                runtime = runtime + parseFloat(test.time);
-                memory = Math.max(memory, test.memory);
-            } else {
-                if (test.status_id == 4) {
-                    status = "Wrong Answer";
-                    errorMessage = test.stderr;
+        // Debug: Log test results
+        console.log("submitCode: Total test cases:", testResult.length);
+
+        for (let i = 0; i < testResult.length; i++) {
+            const test = testResult[i];
+            const statusId = test.status?.id || test.status_id;
+            const expectedOutput = problem.hiddenTestCases[i]?.output;
+            const actualOutput = test.stdout;
+
+            // Normalize outputs for comparison (trim whitespace)
+            const normalizedExpected = expectedOutput?.trim() || '';
+            const normalizedActual = actualOutput?.trim() || '';
+
+            // Debug logging for each test case
+            console.log(`submitCode: Test case ${i + 1}:`, {
+                statusId,
+                statusDescription: test.status?.description,
+                actualOutput: actualOutput?.substring(0, 100),
+                expectedOutput: expectedOutput?.substring(0, 100),
+                normalizedMatch: normalizedExpected === normalizedActual,
+                stderr: test.stderr?.substring(0, 100)
+            });
+
+            // First check if code executed successfully (status 3 = Accepted execution)
+            if (statusId == 3) {
+                // Code executed, now check if output matches
+                if (normalizedExpected === normalizedActual) {
+                    testCasesPassed++;
+                    runtime = runtime + parseFloat(test.time || 0);
+                    memory = Math.max(memory, parseInt(test.memory || 0));
                 } else {
-                    status = "Compiler Error";
-                    errorMessage = test.stderr;
+                    // Output doesn't match
+                    status = "Wrong Answer";
+                    errorMessage = `Expected: ${normalizedExpected.substring(0, 50)}, Got: ${normalizedActual.substring(0, 50)}`;
+                    console.log(`submitCode: Wrong Answer - Expected: "${normalizedExpected}", Got: "${normalizedActual}"`);
+                    break;
                 }
+            } else {
+                // Code didn't execute successfully - determine the error type
+                if (statusId == 4) {
+                    status = "Wrong Answer";
+                    errorMessage = test.stderr || test.compile_output || "Wrong Answer";
+                } else if (statusId == 6) {
+                    status = "Compilation Error";
+                    errorMessage = test.compile_output || test.stderr || "Compilation Error";
+                } else if (statusId == 5) {
+                    status = "Time Limit Exceeded";
+                    errorMessage = "Time Limit Exceeded";
+                } else if (statusId == 7 || statusId == 8 || statusId == 9 || statusId == 10 || statusId == 11 || statusId == 12) {
+                    status = "Runtime Error";
+                    errorMessage = test.stderr || test.message || "Runtime Error";
+                } else {
+                    status = test.status?.description || "Error";
+                    errorMessage = test.stderr || test.compile_output || test.message || "Unknown Error";
+                }
+                break; // Stop at first failure
             }
         }
-        console.log("submitCode: Test results processed");
+        console.log("submitCode: Test results processed - Status:", status, "Passed:", testCasesPassed, "/", testResult.length);
 
         // update to the database submission store into the database which previous stored as pending if it's wrong answer that will also be stored 
         submittedResult.status = status;
@@ -202,11 +255,12 @@ const runCode = async (req, res) => {
         finalCode = referenceSolution.completeCode.replace(startCode.initialCode, code);
     }
 
+    // Don't send expected_output to Judge0 - we'll compare manually
     const submission = problem.visibleTestCases.map((testcase) => ({
         source_code: finalCode,
         language_id: languageId,
         stdin: testcase.input,
-        expected_output: testcase.output,
+        // expected_output: testcase.output, // Removed - manual comparison
     }));
 
     const submitResult = await SubmitBatch(submission);
@@ -226,19 +280,36 @@ const runCode = async (req, res) => {
     let status = true;
     let errorMessage = null;
 
-    for (const test of testResult) {
-        if (test.status_id == 3) {
-            testCasesPassed++;
-            runtime = runtime + parseFloat(test.time)
-            memory = Math.max(memory, test.memory);
-        } else {
-            if (test.status_id == 4) {
-                status = false
-                errorMessage = test.stderr
+    for (let i = 0; i < testResult.length; i++) {
+        const test = testResult[i];
+        const statusId = test.status?.id || test.status_id;
+        const expectedOutput = problem.visibleTestCases[i]?.output;
+        const actualOutput = test.stdout;
+
+        // Normalize outputs for comparison (trim whitespace)
+        const normalizedExpected = expectedOutput?.trim() || '';
+        const normalizedActual = actualOutput?.trim() || '';
+
+        if (statusId == 3) {
+            // Code executed successfully, now check output
+            if (normalizedExpected === normalizedActual) {
+                testCasesPassed++;
+                runtime = runtime + parseFloat(test.time || 0);
+                memory = Math.max(memory, parseInt(test.memory || 0));
+            } else {
+                status = false;
+                errorMessage = `Test case ${i + 1} failed: Expected "${normalizedExpected}", Got "${normalizedActual}"`;
             }
-            else {
-                status = false
-                errorMessage = test.stderr
+        } else {
+            status = false;
+            if (statusId == 4) {
+                errorMessage = test.stderr || test.compile_output || "Wrong Answer";
+            } else if (statusId == 6) {
+                errorMessage = test.compile_output || test.stderr || "Compilation Error";
+            } else if (statusId == 5) {
+                errorMessage = "Time Limit Exceeded";
+            } else {
+                errorMessage = test.stderr || test.compile_output || test.message || "Runtime Error";
             }
         }
     }
@@ -247,7 +318,8 @@ const runCode = async (req, res) => {
         success: status,
         testCases: testResult,
         runtime,
-        memory
+        memory,
+        errorMessage
     });
 }
 

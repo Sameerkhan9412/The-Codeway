@@ -38,7 +38,7 @@ const LeaderboardSchema = new Schema({
                     },
                     status: {
                         type: String,
-                        enum: ["Accepted", "Wrong Answer", "Compiler Error", "Not Attempted"],
+                        enum: ["Accepted", "Wrong Answer", "Compiler Error", "Not Attempted","Processing"],
                         default: "Not Attempted",
                     },
                     score: {
