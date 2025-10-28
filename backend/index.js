@@ -22,7 +22,7 @@ const dsaRouter = require("./routes/dsa");
 
 const { autoFinalizeContestRankings } = require("./controllers/leaderboardController");
 const cron = require("node-cron");
-const videoRouter = require("./routes/Video");
+const videoRouter = require("./routes/video");
 
 
 const PORT_NO = process.env.PORT_NO;

@@ -89,6 +89,7 @@ import {
   ChevronDown
 } from 'lucide-react'
 import AiAssistant from '../components/common/AiAssistant'
+import { FaCode } from 'react-icons/fa'
 
 // Enhanced mock data
 const mockUser = {
@@ -935,7 +936,8 @@ const Homepage = () => {
             <div className="md:col-span-2">
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8  flex items-center justify-center">
-                  <img src={codeway}  height={30} width={40} alt="codeway-logo" />
+                  {/* <img src={codeway}  height={30} width={40} alt="codeway-logo" /> */}
+                  <FaCode className="w-6 h-6 text-orange-400" />
                 </div>
                 <span className="text-xl font-bold text-white">The CodeWay</span>
               </div>
