@@ -1016,7 +1016,7 @@ const Homepage = () => {
           
           <div className="pt-8 mt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm mb-4 md:mb-0">
-              © {new Date().getFullYear()} CodeMaster. All rights reserved. Built with ❤️ for developers worldwide.
+              © {new Date().getFullYear()} Sameer Khan. All rights reserved. Built with ❤️ for developers worldwide.
             </p>
             
             <div className="flex items-center space-x-6">
