@@ -211,7 +211,7 @@ const requestPasswordResetOTP = async (req, res) => {
 
         // Create a JWT token
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        const resetLink = `${"http://localhost:5173"}/reset-password/${token}`;
+        const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
 
         const mailOptions = {
             from: process.env.EMAIL_USER,

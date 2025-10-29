@@ -7,7 +7,7 @@ let io;
 const initializeSocket = (server) => {
   io = socketIO(server, {
     cors: {
-      origin: 'http://localhost:5173',
+      origin: process.env.FRONTEND_URL,
       methods: ['GET', 'POST'],
       credentials: true
     }

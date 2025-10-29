@@ -10,7 +10,7 @@ export const initializeSocket = (token) => {
   }
 
   // Create new connection with authentication token
-  socket = io("http://localhost:3000", {
+  socket = io(import.meta.env.VITE_API_URL, {
     auth: { token },
     withCredentials: true,
     transports: ['websocket', 'polling']
