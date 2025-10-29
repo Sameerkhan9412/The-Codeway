@@ -28,7 +28,7 @@ const videoRouter = require("./routes/video");
 const PORT_NO = process.env.PORT_NO;
 
 app.use(cors({
-  origin: [process.env.FRONTEND_URL,"http://localhost:5173"],
+  origin: '*',
   credentials: true
 }))
 
