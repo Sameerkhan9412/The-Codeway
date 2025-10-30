@@ -122,7 +122,7 @@ const login = async (req, res) => {
         // Increase token expiration to 7 days (604800 seconds)
         const token = jwt.sign({ _id: user._id, emailId: user.emailId, role: user.role }, process.env.JWT_SECRET, { expiresIn: 604800 });
         // Increase cookie maxAge to 7 days (604800000 milliseconds)
-        res.cookie("token", token, { maxAge: 604800000, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
+        res.cookie("token", token, { maxAge: 604800000, httpOnly: true, sameSite: 'none', secure: true });
 
         const reply = {
             firstName: user.firstName,
