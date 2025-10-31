@@ -34,12 +34,13 @@ const PORT_NO = process.env.PORT_NO;
 
 app.use(cors({
   origin: [
-    "http://localhost:5173",
-    "https://the-codeway.vercel.app"
+    "https://the-codeway.vercel.app",
+    "http://localhost:5173"
   ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 }));
+
 
 app.use(express.json());
 app.use(cookieParser());
